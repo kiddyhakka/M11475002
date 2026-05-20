@@ -6,7 +6,7 @@
     <title>鬧(Now)打八音</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Phosphor Icons (取代原本的 lucide-react) -->
+    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <style>
@@ -261,10 +261,11 @@
             { id: 'ai-chat', title: '✨ 八音大師解惑', icon: 'ph-chat-circle-dots', color: 'bg-purple-600', desc: 'AI 大師在線回答' },
         ];
 
+        // 修改：加上 audioUrl 屬性，打擊樂器組不加
         const INSTRUMENTS = [
-            { name: '嗩吶', desc: '客家八音最重要的主旋律樂器，聲音高亢明亮。', type: '吹管樂器', imageUrl: 'https://www.hakka-portal.ntpc.gov.tw/archive/article/8/normal/part_623_7055099_94710.jpg' },
-            { name: '二胡/胖胡', desc: '重要的擦弦樂器，負責和聲與輔助旋律。', type: '擦弦樂器', imageUrl: 'https://dcm.s3.hicloud.net.tw/new/collection/2025-09-12/43c7e3b2-9208-42a1-9398-7ac467762a6c/98ae977c-f197-4378-a97f-05ac67f10b48_f.jpg' },
-            { name: '揚琴', desc: '擊弦樂器，音色清脆，常用於伴奏。', type: '擊弦樂器', imageUrl: 'https://collections.culture.tw/ShowGalImage.aspx?SYSUID=17&IMG=KQ5S5NMHM1MXM4KM5KM6MG0V06M6MGMNM4MBMPM4MP0V0BMYKMK5KHM5MJMDMQKAK4KJ5SK7MCMKM65A5SKLKA5SKEKY5MKL5TKJMWKXK8KP5UMS5O5TKQK4K2K6MD0EM2MB06ME0GM6MZ0RMWMF0GME&TEXT=K7KG575Y&FROM=5YKK57' },
+            { name: '嗩吶', desc: '客家八音最重要的主旋律樂器，聲音高亢明亮。', type: '吹管樂器', imageUrl: 'https://www.hakka-portal.ntpc.gov.tw/archive/article/8/normal/part_623_7055099_94710.jpg', audioUrl: 'https://kiddyhakka.github.io/M11475002/eight/嗩吶音階從G開始_低八度.m4a' },
+            { name: '二胡/胖胡', desc: '重要的擦弦樂器，負責和聲與輔助旋律。', type: '擦弦樂器', imageUrl: 'https://dcm.s3.hicloud.net.tw/new/collection/2025-09-12/43c7e3b2-9208-42a1-9398-7ac467762a6c/98ae977c-f197-4378-a97f-05ac67f10b48_f.jpg', audioUrl: 'https://kiddyhakka.github.io/M11475002/eight/胖胡音階從B開始.m4a' },
+            { name: '揚琴', desc: '擊弦樂器，音色清脆，常用於伴奏。', type: '擊弦樂器', imageUrl: 'https://collections.culture.tw/ShowGalImage.aspx?SYSUID=17&IMG=KQ5S5NMHM1MXM4KM5KM6MG0V06M6MGMNM4MBMPM4MP0V0BMYKMK5KHM5MJMDMQKAK4KJ5SK7MCMKM65A5SKLKA5SKEKY5MKL5TKJMWKXK8KP5UMS5O5TKQK4K2K6MD0EM2MB06ME0GM6MZ0RMWMF0GME&TEXT=K7KG575Y&FROM=5YKK57', audioUrl: 'https://kiddyhakka.github.io/M11475002/eight/梆子_低.m4a' },
             { name: '打擊樂器組', desc: '包含堂鼓、小鈸、大鑼、小鑼等，掌控節奏與氣氛。', type: '打擊樂器', imageUrl: 'https://www.hakka.gov.tw/userfiles/image/%E5%A4%A7%E5%A4%A5%E6%88%BF%E8%97%9D%E8%A1%93%E5%9C%98.jpg' },
         ];
 
@@ -288,6 +289,52 @@
         let currentIntroTab = 0;
         let quizState = { current: 0, score: 0, optionSelected: false };
         let isChatLoading = false;
+        
+        // 音樂播放狀態
+        let currentAudio = null;
+        let currentPlayingBtn = null;
+
+        // --- 樂器音頻控制 ---
+        function stopInstrumentAudio() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                if (currentPlayingBtn) {
+                    currentPlayingBtn.innerHTML = '<i class="ph-bold ph-speaker-high"></i> <span>試聽聲音</span>';
+                    currentPlayingBtn.classList.remove('bg-blue-200', 'animate-pulse');
+                }
+                currentAudio = null;
+                currentPlayingBtn = null;
+            }
+        }
+
+        function playInstrumentAudio(url, btn) {
+            // 如果點擊的是正在播放的按鈕，則停止播放
+            if (currentPlayingBtn === btn && currentAudio && !currentAudio.paused) {
+                stopInstrumentAudio();
+                return;
+            }
+            
+            // 停止其他正在播放的聲音
+            stopInstrumentAudio();
+
+            currentAudio = new Audio(url);
+            currentPlayingBtn = btn;
+            
+            // 更改按鈕狀態為播放中
+            btn.innerHTML = '<i class="ph-bold ph-stop"></i> <span>停止播放</span>';
+            btn.classList.add('bg-blue-200', 'animate-pulse');
+
+            currentAudio.play().catch(e => {
+                console.error("Audio play failed:", e);
+                btn.innerHTML = '<i class="ph-bold ph-warning"></i> <span>播放失敗</span>';
+                btn.classList.remove('bg-blue-200', 'animate-pulse');
+            });
+
+            currentAudio.onended = () => {
+                stopInstrumentAudio();
+            };
+        }
 
         // --- Gemini API 處理 ---
         async function generateGeminiContent(prompt, systemInstruction) {
@@ -322,6 +369,9 @@
 
         // --- 視圖控制與路由 ---
         function switchView(viewId) {
+            // 切換畫面時停止播放中的樂器聲音
+            stopInstrumentAudio();
+
             // 隱藏所有視圖
             document.querySelectorAll('.view-container').forEach(el => el.classList.add('hidden'));
             
@@ -384,6 +434,9 @@
 
         // ====== 介紹視圖 ======
         function switchIntroTab(tabIdx) {
+            // 切換 Tab 時也停止播放聲音
+            stopInstrumentAudio();
+            
             currentIntroTab = tabIdx;
             document.getElementById('tab-0').classList.toggle('text-amber-700', tabIdx === 0);
             document.getElementById('tab-0').classList.toggle('bg-amber-50/50', tabIdx === 0);
@@ -439,9 +492,11 @@
                             </div>
                         </div>
                         <div class="flex flex-wrap gap-2 pt-2 border-t border-stone-100 mt-1">
-                            <button class="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 py-2 rounded-lg hover:bg-blue-100 active:bg-blue-200 transition-colors">
-                                <i class="ph-bold ph-speaker-high"></i> 試聽聲音
+                            ${inst.audioUrl ? `
+                            <button onclick="playInstrumentAudio('${inst.audioUrl}', this)" class="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 py-2 rounded-lg hover:bg-blue-100 active:bg-blue-200 transition-colors">
+                                <i class="ph-bold ph-speaker-high"></i> <span>試聽聲音</span>
                             </button>
+                            ` : ''}
                             <button id="ai-btn-${idx}" onclick="getAIStory(${idx}, '${inst.name}')" class="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-purple-700 bg-purple-50 py-2 rounded-lg hover:bg-purple-100 active:bg-purple-200 transition-colors">
                                 <i class="ph-fill ph-sparkle"></i> ✨ AI 說故事
                             </button>
