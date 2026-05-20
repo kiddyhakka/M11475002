@@ -1,69 +1,657 @@
-<!-- ... (前段代碼保持不變) ... -->
-        // -> 八音拼貼邏輯：更新樂器清單，加入梆子(高/低)
-        window.puzzleLoadCloudAudios = async () => {
-            if (state.puzzle.isProcessing || state.puzzle.isCloudLoaded) return;
-            state.puzzle.isProcessing = true;
-            AudioEngine.init();
-            renderApp(); 
-            
-            // 包含梆子音檔的新樂器陣列
-            const instrumentsToLoad = [
-                { name: '梆子(低)', url: 'https://kiddyhakka.github.io/M11475002/eight/梆子_低.m4a' },
-                { name: '梆子(高)', url: 'https://kiddyhakka.github.io/M11475002/eight/梆子_高.m4a' }
-            ];
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>鬧(Now)打八音</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons (取代原本的 lucide-react) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <style>
+        @keyframes slideInFromBottom {
+            from { transform: translateY(1rem); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes zoomIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .animate-slide-up { animation: slideInFromBottom 0.5s ease-out forwards; }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .animate-zoom-in { animation: zoomIn 0.3s ease-out forwards; }
+        
+        /* 隱藏滾動條但保持可滾動 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="min-h-screen bg-stone-200 flex justify-center font-sans text-stone-800 selection:bg-amber-200">
 
-            let updatedUploads = { ...state.puzzle.uploadedFiles };
+    <!-- 模擬手機 APP 外觀的容器 -->
+    <div class="w-full max-w-md bg-stone-50 shadow-2xl relative flex flex-col h-[100dvh] overflow-hidden">
+        
+        <!-- Header - APP 風格 -->
+        <header class="bg-amber-700 text-white p-4 flex items-center justify-between shrink-0 shadow-md z-20 relative">
+            <button id="back-btn" onclick="goBack()" class="hidden flex items-center hover:bg-amber-600 p-1 rounded-lg transition-colors">
+                <i class="ph ph-caret-left text-2xl"></i>
+                <span class="ml-1 text-sm font-bold">返回</span>
+            </button>
+            <div id="header-placeholder" class="w-16"></div> <!-- 佔位用 -->
             
-            for (const track of instrumentsToLoad) {
-                try {
-                    const response = await fetch(track.url);
-                    const arrayBuffer = await response.arrayBuffer();
-                    const audioBuffer = await AudioEngine.ctx.decodeAudioData(arrayBuffer);
-                    updatedUploads[track.name] = audioBuffer;
-                } catch (err) { 
-                    console.error(`載入 ${track.name} 失敗:`, err); 
+            <h1 class="text-lg md:text-xl font-bold tracking-wider absolute left-1/2 -translate-x-1/2 flex items-center gap-2 w-max">
+                <i class="ph ph-music-notes text-xl hidden sm:block"></i> 鬧(Now)打八音
+            </h1>
+            <div class="w-16"></div> <!-- 佔位用 -->
+        </header>
+
+        <!-- 內容區域 -->
+        <main class="flex-1 overflow-y-auto bg-amber-50/30 flex flex-col relative no-scrollbar" id="main-content">
+            
+            <!-- ====== 首頁視圖 ====== -->
+            <div id="view-home" class="view-container p-6 flex flex-col gap-6 items-center justify-center min-h-full w-full">
+                <div class="mb-4 text-center animate-slide-up">
+                    <div class="w-24 h-24 bg-amber-200 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner border-4 border-amber-300">
+                        <i class="ph-fill ph-music-notes text-5xl text-amber-700"></i>
+                    </div>
+                    <h2 class="text-2xl font-black text-amber-900 tracking-wide mb-1">客家音樂世界</h2>
+                    <p class="text-sm text-stone-600 font-medium">請選擇下方單元開始探索</p>
+                </div>
+                <div class="w-full flex flex-col gap-4" id="home-menus">
+                    <!-- 首頁選單將由 JS 渲染 -->
+                </div>
+            </div>
+
+            <!-- ====== 介紹視圖 ====== -->
+            <div id="view-intro" class="view-container hidden flex flex-col min-h-full w-full">
+                <!-- Tabs -->
+                <div class="flex bg-white shadow-sm shrink-0 sticky top-0 z-10 border-b border-stone-200" id="intro-tabs">
+                    <button onclick="switchIntroTab(0)" id="tab-0" class="flex-1 py-3 text-sm font-bold transition-all relative text-amber-700 bg-amber-50/50">
+                        客家八音是什麼?
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-amber-600 rounded-t-full tab-indicator"></div>
+                    </button>
+                    <button onclick="switchIntroTab(1)" id="tab-1" class="flex-1 py-3 text-sm font-bold transition-all relative text-stone-500 hover:bg-stone-50">
+                        樂器介紹
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-amber-600 rounded-t-full tab-indicator hidden"></div>
+                    </button>
+                </div>
+                <!-- 內容區塊 -->
+                <div class="p-4 md:p-5 flex-1" id="intro-content">
+                    <!-- 內容將由 JS 渲染 -->
+                </div>
+            </div>
+
+            <!-- ====== 影音欣賞視圖 ====== -->
+            <div id="view-appreciation" class="view-container hidden p-4 md:p-5 space-y-4 w-full">
+                <div class="bg-amber-100 text-amber-900 p-3 rounded-xl text-sm font-medium flex gap-2 items-start shadow-sm">
+                    <i class="ph-fill ph-info text-lg text-amber-700 shrink-0 mt-0.5"></i>
+                    <p>點選下方影片卡片，即可在 APP 內直接播放精彩演出。</p>
+                </div>
+                <div class="space-y-4 pb-4" id="video-list">
+                    <!-- 影片列表將由 JS 渲染 -->
+                </div>
+            </div>
+
+            <!-- 全螢幕影片播放器 (Modal) -->
+            <div id="video-modal" class="hidden absolute inset-0 z-30 flex flex-col h-full w-full bg-stone-900 animate-slide-up">
+                <div class="p-3 flex items-center justify-between bg-black text-white shrink-0">
+                    <h3 id="video-modal-title" class="text-sm font-bold truncate pr-4 flex-1 text-stone-300">影片播放</h3>
+                    <button onclick="closeVideo()" class="bg-white/20 hover:bg-white/30 text-white rounded-full p-1.5 transition-colors shrink-0 flex items-center justify-center">
+                        <i class="ph ph-x text-lg"></i>
+                    </button>
+                </div>
+                <div class="w-full bg-black flex items-center justify-center relative aspect-video shadow-xl border-b border-stone-800" id="video-iframe-container">
+                    <!-- Iframe 將由此注入 -->
+                </div>
+                <div class="p-5 text-stone-300 bg-stone-900 flex-1 flex flex-col">
+                    <h4 id="video-modal-desc" class="font-bold text-white text-base md:text-lg mb-2 leading-relaxed"></h4>
+                    <p id="video-modal-source" class="text-xs text-stone-400 mb-6"></p>
+                    
+                    <div class="mt-auto bg-stone-800 p-4 rounded-xl border border-stone-700">
+                        <p class="text-xs text-stone-400 mb-3 leading-relaxed">
+                            遇到錯誤畫面無法播放？<br/>這可能是因為影片擁有者限制了嵌入播放權限。
+                        </p>
+                        <a id="video-modal-link" href="#" target="_blank" class="bg-red-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-red-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full shadow-sm">
+                            <i class="ph-bold ph-arrow-square-out"></i> 點此直接前往 YouTube 觀看
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====== 遊戲選單視圖 ====== -->
+            <div id="view-game-menu" class="view-container hidden p-5 flex flex-col h-full w-full animate-fade-in">
+                <div class="text-center mb-6 mt-4">
+                    <h3 class="font-black text-xl text-amber-900 mb-1">我是八音達人</h3>
+                    <p class="text-xs text-stone-500 font-medium">請選擇您想挑戰的遊戲項目：</p>
+                </div>
+                <div class="flex flex-col gap-4">
+                    <button onclick="switchView('puzzle')" class="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm flex items-center gap-4 hover:border-blue-400 hover:bg-blue-50 transition-all group active:scale-[0.98]">
+                        <div class="bg-blue-50 p-4 rounded-xl text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                            <i class="ph-fill ph-puzzle-piece text-3xl"></i>
+                        </div>
+                        <div class="text-left flex-1">
+                            <h4 class="font-bold text-base mb-1 text-stone-800">八音拼貼</h4>
+                            <p class="text-xs text-stone-500">自由編排樂器，創作你的專屬八音節奏！</p>
+                        </div>
+                        <i class="ph-bold ph-caret-right text-xl text-stone-300"></i>
+                    </button>
+                    <button onclick="initQuiz()" class="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm flex items-center gap-4 hover:border-amber-500 hover:bg-amber-50 transition-all group active:scale-[0.98]">
+                        <div class="bg-amber-50 p-4 rounded-xl text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                            <i class="ph-fill ph-question text-3xl"></i>
+                        </div>
+                        <div class="text-left flex-1">
+                            <h4 class="font-bold text-base mb-1 text-stone-800">八音知識小測驗</h4>
+                            <p class="text-xs text-stone-500">測試你對客家八音與樂器聲音的了解！</p>
+                        </div>
+                        <i class="ph-bold ph-caret-right text-xl text-stone-300"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ====== 測驗視圖 ====== -->
+            <div id="view-quiz" class="view-container hidden flex flex-col h-full w-full p-5 animate-slide-up">
+                <div id="quiz-question-area" class="flex-1 flex flex-col w-full h-full">
+                    <div class="flex items-center justify-between mb-6">
+                        <button onclick="switchView('game-menu')" class="flex items-center gap-1 text-stone-500 hover:text-stone-800 font-bold bg-stone-100 px-3 py-1.5 rounded-lg text-sm">
+                            <i class="ph-bold ph-caret-left"></i> 返回
+                        </button>
+                        <span id="quiz-progress" class="text-xs font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-full border border-amber-200">
+                            問題 1 / 3
+                        </span>
+                    </div>
+                    <div class="flex-1 flex flex-col w-full">
+                        <h3 id="quiz-question-text" class="text-lg font-black text-stone-800 leading-relaxed mb-6 bg-white p-4 rounded-xl border border-stone-100 shadow-sm">
+                            問題內容
+                        </h3>
+                        <div id="quiz-options" class="space-y-3 w-full">
+                            <!-- 選項按鈕由 JS 渲染 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 測驗結果畫面 -->
+                <div id="quiz-result-area" class="hidden h-full flex flex-col items-center justify-center animate-zoom-in w-full pb-10">
+                    <div class="bg-amber-100 w-24 h-24 rounded-full flex items-center justify-center mb-4 shadow-inner border-4 border-amber-200">
+                        <i class="ph-fill ph-trophy text-5xl text-amber-600"></i>
+                    </div>
+                    <h2 id="quiz-result-title" class="text-2xl font-black text-amber-900 mb-2">結果稱號</h2>
+                    <p id="quiz-result-msg" class="text-sm text-stone-600 text-center mb-8">評價訊息</p>
+                    
+                    <div class="bg-white px-8 py-6 rounded-2xl shadow-sm border border-stone-200 mb-8 w-full text-center">
+                        <p class="text-sm text-stone-500 font-bold mb-1">最終測驗得分</p>
+                        <p class="text-5xl font-black text-amber-600"><span id="quiz-final-score">0</span> <span class="text-2xl text-stone-400" id="quiz-total-score">/ 3</span></p>
+                    </div>
+                    <div class="flex flex-col gap-3 w-full">
+                        <button onclick="initQuiz()" class="w-full bg-amber-600 text-white py-3.5 rounded-xl text-sm font-bold hover:bg-amber-700 active:scale-[0.98] transition-all shadow-md">再玩一次</button>
+                        <button onclick="switchView('game-menu')" class="w-full bg-stone-200 text-stone-800 py-3.5 rounded-xl text-sm font-bold hover:bg-stone-300 active:scale-[0.98] transition-all">回遊戲選單</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====== 八音拼貼 (Iframe) 視圖 ====== -->
+            <div id="view-puzzle" class="view-container hidden w-full h-full flex flex-col relative z-30 bg-stone-100 overflow-hidden">
+                <button onclick="switchView('game-menu')" class="absolute top-4 left-4 flex items-center gap-1 text-stone-700 bg-white/90 hover:bg-white px-3 py-1.5 rounded-lg text-sm font-bold z-50 shadow-md backdrop-blur-sm transition-all">
+                    <i class="ph-bold ph-caret-left"></i> 返回
+                </button>
+                <!-- Iframe source 將在切換到此視圖時注入，離開時清空 -->
+                <div id="puzzle-iframe-container" class="w-full h-full border-0"></div>
+            </div>
+
+            <!-- ====== AI 聊天視圖 ====== -->
+            <div id="view-ai-chat" class="view-container hidden w-full h-full flex flex-col bg-stone-50 relative">
+                <div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-3 flex gap-3 items-center shrink-0 shadow-sm z-10">
+                    <div class="bg-white/20 p-2 rounded-full">
+                        <i class="ph-fill ph-sparkle text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-black tracking-wide">八音大師解惑專區</h2>
+                        <p class="text-[10px] text-purple-100">隨時問我關於八音的問題！</p>
+                    </div>
+                </div>
+
+                <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-4 bg-purple-50/40">
+                    <!-- 預設訊息 -->
+                    <div class="flex justify-start">
+                        <div class="w-8 h-8 bg-purple-200 rounded-full flex items-center justify-center mr-2 mt-1 shrink-0 text-purple-700 text-xs font-bold shadow-sm">大師</div>
+                        <div class="max-w-[75%] p-3 rounded-2xl text-sm leading-relaxed shadow-sm bg-white text-stone-800 border border-purple-100 rounded-bl-sm">
+                            你好！我是客家八音大師 ✨。關於八音的歷史、樂器或是音樂特色，想問我什麼呢？
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 載入中指示器 -->
+                <div id="chat-loading" class="hidden p-4 justify-start absolute bottom-[60px] w-full bg-gradient-to-t from-purple-50/90 to-transparent">
+                    <div class="w-8 h-8 bg-purple-200 rounded-full flex items-center justify-center mr-2 mt-1 shrink-0 text-purple-700 text-xs font-bold shadow-sm">大師</div>
+                    <div class="bg-white p-3 rounded-2xl rounded-bl-sm border border-purple-100 shadow-sm text-purple-500 flex items-center gap-2 text-sm font-bold">
+                        <i class="ph ph-spinner animate-spin"></i> 大師思考中...
+                    </div>
+                </div>
+
+                <div class="p-3 bg-white border-t border-stone-200 shrink-0 sticky bottom-0 z-20">
+                    <div class="flex items-center gap-2 bg-stone-100 border border-stone-200 p-1.5 rounded-full focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
+                        <input type="text" id="chat-input" placeholder="輸入您的問題..." class="flex-1 bg-transparent px-3 py-1.5 text-sm outline-none text-stone-700 placeholder:text-stone-400" onkeydown="if(event.key === 'Enter') handleSendChat()" />
+                        <button id="chat-send-btn" onclick="handleSendChat()" class="bg-purple-600 text-white p-2 rounded-full hover:bg-purple-700 disabled:opacity-50 transition-colors flex items-center justify-center shadow-sm active:scale-95">
+                            <i class="ph-bold ph-paper-plane-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Footer 版權聲明 -->
+        <footer class="bg-stone-900 text-stone-400 text-[10px] p-3 text-center shrink-0 z-20" id="main-footer">
+            <p>本APP為課堂教學使用，無商業用途。</p>
+            <p class="mt-0.5 opacity-80">部分內容取材自公開網路、紙本出版品或網站，版權屬原作者所有。</p>
+        </footer>
+    </div>
+
+    <!-- ===== Core Logic ===== -->
+    <script>
+        // --- 模擬資料庫 ---
+        const MENUS = [
+            { id: 'intro', title: '客家八音暨樂器介紹', icon: 'ph-info', color: 'bg-blue-500', desc: '認識傳統與樂器' },
+            { id: 'appreciation', title: '客家八音欣賞', icon: 'ph-play-circle', color: 'bg-emerald-600', desc: '影音與音樂饗宴' },
+            { id: 'game-menu', title: '我是八音達人', icon: 'ph-trophy', color: 'bg-amber-500', desc: '遊戲與測驗挑戰' },
+            { id: 'ai-chat', title: '✨ 八音大師解惑', icon: 'ph-chat-circle-dots', color: 'bg-purple-600', desc: 'AI 大師在線回答' },
+        ];
+
+        const INSTRUMENTS = [
+            { name: '嗩吶', desc: '客家八音最重要的主旋律樂器，聲音高亢明亮。', type: '吹管樂器', imageUrl: 'https://www.hakka-portal.ntpc.gov.tw/archive/article/8/normal/part_623_7055099_94710.jpg' },
+            { name: '二胡/胖胡', desc: '重要的擦弦樂器，負責和聲與輔助旋律。', type: '擦弦樂器', imageUrl: 'https://dcm.s3.hicloud.net.tw/new/collection/2025-09-12/43c7e3b2-9208-42a1-9398-7ac467762a6c/98ae977c-f197-4378-a97f-05ac67f10b48_f.jpg' },
+            { name: '揚琴', desc: '擊弦樂器，音色清脆，常用於伴奏。', type: '擊弦樂器', imageUrl: 'https://collections.culture.tw/ShowGalImage.aspx?SYSUID=17&IMG=KQ5S5NMHM1MXM4KM5KM6MG0V06M6MGMNM4MBMPM4MP0V0BMYKMK5KHM5MJMDMQKAK4KJ5SK7MCMKM65A5SKLKA5SKEKY5MKL5TKJMWKXK8KP5UMS5O5TKQK4K2K6MD0EM2MB06ME0GM6MZ0RMWMF0GME&TEXT=K7KG575Y&FROM=5YKK57' },
+            { name: '打擊樂器組', desc: '包含堂鼓、小鈸、大鑼、小鑼等，掌控節奏與氣氛。', type: '打擊樂器', imageUrl: 'https://www.hakka.gov.tw/userfiles/image/%E5%A4%A7%E5%A4%A5%E6%88%BF%E8%97%9D%E8%A1%93%E5%9C%98.jpg' },
+        ];
+
+        const VIDEOS = [
+            { title: '《HakkaTV電視音樂專輯》天地之樂--打八音', source: 'YouTube', url: 'https://www.youtube.com/watch?v=JJj0j4jpwg4', videoId: 'JJj0j4jpwg4', si: '7vzX0NpOC6lQsbFq' },
+            { title: '八音入秋 聲韻傳承｜六堆地區｜《風神舞台》', source: 'YouTube', url: 'https://www.youtube.com/watch?v=knUCcy4_yrw&t=4204s', videoId: 'knUCcy4_yrw' },
+            { title: '《八音迎新春》EP22：美濃國中八音社', source: 'YouTube', url: 'https://www.youtube.com/watch?v=acNuUWgdl5Q', videoId: 'acNuUWgdl5Q' },
+            { title: '客家電視－「台灣客翻天」八音布魯斯', source: 'YouTube', url: 'https://www.youtube.com/watch?v=3AaqVJhzDAU', videoId: '3AaqVJhzDAU' },
+            { title: '《八音迎新春》EP24：大夥房藝術團', source: 'YouTube', url: 'https://www.youtube.com/watch?v=4zDmGd9lWdY&t=1328s', videoId: '4zDmGd9lWdY' },
+            { title: '《八音迎新春》 EP45：美濃客家八音團', source: 'YouTube', url: 'https://www.youtube.com/watch?v=f86BSn2MENI', videoId: 'f86BSn2MENI' },
+        ];
+
+        const QUIZ_QUESTIONS = [
+            { question: '請問客家八音中，哪一個樂器通常負責擔任「主旋律」的靈魂角色？', options: ['二胡', '嗩吶', '揚琴', '堂鼓'], answer: 1 },
+            { question: '傳統的「八音」分類，是依據什麼來劃分的？', options: ['製作材料 (金、石、絲、竹等)', '演奏人數', '樂曲長度', '發源地區'], answer: 0 },
+            { question: '下列何者「不是」常見的客家八音打擊樂器？', options: ['小鈸', '大鑼', '定音鼓', '堂鼓'], answer: 2 }
+        ];
+
+        // --- 狀態管理 ---
+        let currentView = 'home';
+        let currentIntroTab = 0;
+        let quizState = { current: 0, score: 0, optionSelected: false };
+        let isChatLoading = false;
+
+        // --- Gemini API 處理 ---
+        async function generateGeminiContent(prompt, systemInstruction) {
+            const apiKey = ""; // API key 從執行環境獲取
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] }
+            };
+            
+            const fetchWithRetry = async (retries = 5) => {
+                const delays = [1000, 2000, 4000, 8000, 16000];
+                for (let i = 0; i < retries; i++) {
+                    try {
+                        const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        if (!response.ok) throw new Error('API error');
+                        return await response.json();
+                    } catch (err) {
+                        if (i === retries - 1) throw err;
+                        await new Promise(r => setTimeout(r, delays[i]));
+                    }
+                }
+            };
+
+            try {
+                const data = await fetchWithRetry();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || "哎呀，大師正在閉關修煉，請稍後再試！";
+            } catch (error) {
+                return "連線失敗，大師暫時無法回應，請檢查網路後再試。";
+            }
+        }
+
+        // --- 視圖控制與路由 ---
+        function switchView(viewId) {
+            // 隱藏所有視圖
+            document.querySelectorAll('.view-container').forEach(el => el.classList.add('hidden'));
+            
+            // 特殊處理：如果離開 puzzle，移除 iframe src 停止音樂
+            if (currentView === 'puzzle' && viewId !== 'puzzle') {
+                document.getElementById('puzzle-iframe-container').innerHTML = '';
+            }
+
+            currentView = viewId;
+            document.getElementById(`view-${viewId}`).classList.remove('hidden');
+
+            // Header 按鈕控制
+            const backBtn = document.getElementById('back-btn');
+            const placeholder = document.getElementById('header-placeholder');
+            if (viewId === 'home') {
+                backBtn.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                document.getElementById('main-footer').classList.remove('hidden');
+            } else {
+                backBtn.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                // 特殊視圖隱藏 Footer
+                if (['puzzle', 'ai-chat', 'quiz'].includes(viewId)) {
+                    document.getElementById('main-footer').classList.add('hidden');
+                } else {
+                    document.getElementById('main-footer').classList.remove('hidden');
                 }
             }
-            
-            state.puzzle.uploadedFiles = updatedUploads;
-            state.puzzle.isProcessing = false;
-            state.puzzle.isCloudLoaded = true;
-            renderApp();
-        };
 
-        // -> 渲染八音拼貼介面
-        const renderPuzzleView = () => {
-            const uploadHtml = Object.keys(state.puzzle.uploadedFiles).map(name => `
-                <div class="flex-shrink-0 w-20 h-20 bg-white rounded-lg border-2 border-indigo-200 flex flex-col items-center justify-center p-2 shadow-sm">
-                    <i data-lucide="music" class="text-indigo-400 mb-1"></i>
-                    <span class="text-[10px] font-bold text-center text-indigo-800">${name}</span>
+            // 初始化特定視圖
+            if (viewId === 'puzzle') {
+                document.getElementById('puzzle-iframe-container').innerHTML = `<iframe class="w-full h-full border-0" src="https://kiddyhakka.github.io/M11475002/eight.html" title="八音拼貼" allow="autoplay; fullscreen"></iframe>`;
+            }
+        }
+
+        function goBack() {
+            if (currentView === 'puzzle' || currentView === 'quiz') {
+                switchView('game-menu');
+            } else {
+                switchView('home');
+            }
+        }
+
+        // ====== 首頁渲染 ======
+        function initHome() {
+            const container = document.getElementById('home-menus');
+            container.innerHTML = MENUS.map((menu, idx) => `
+                <button onclick="switchView('${menu.id}')" class="group relative overflow-hidden bg-white rounded-2xl shadow-sm border border-stone-200 p-4 flex items-center gap-4 hover:shadow-md hover:border-amber-300 transition-all active:scale-[0.98] animate-slide-up" style="animation-delay: ${idx * 100}ms; animation-fill-mode: both;">
+                    <div class="${menu.color} text-white p-3.5 rounded-xl shadow-inner group-hover:scale-110 transition-transform flex items-center justify-center">
+                        <i class="ph-fill ${menu.icon} text-3xl"></i>
+                    </div>
+                    <div class="text-left flex-1">
+                        <h3 class="text-base font-bold text-stone-800 group-hover:text-amber-700 transition-colors mb-0.5">${menu.title}</h3>
+                        <p class="text-xs text-stone-500 font-medium">${menu.desc}</p>
+                    </div>
+                    <i class="ph-bold ph-caret-right text-xl text-stone-300 group-hover:text-amber-500 transition-colors"></i>
+                </button>
+            `).join('');
+        }
+
+        // ====== 介紹視圖 ======
+        function switchIntroTab(tabIdx) {
+            currentIntroTab = tabIdx;
+            document.getElementById('tab-0').classList.toggle('text-amber-700', tabIdx === 0);
+            document.getElementById('tab-0').classList.toggle('bg-amber-50/50', tabIdx === 0);
+            document.getElementById('tab-0').classList.toggle('text-stone-500', tabIdx !== 0);
+            document.getElementById('tab-0').querySelector('.tab-indicator').classList.toggle('hidden', tabIdx !== 0);
+
+            document.getElementById('tab-1').classList.toggle('text-amber-700', tabIdx === 1);
+            document.getElementById('tab-1').classList.toggle('bg-amber-50/50', tabIdx === 1);
+            document.getElementById('tab-1').classList.toggle('text-stone-500', tabIdx !== 1);
+            document.getElementById('tab-1').querySelector('.tab-indicator').classList.toggle('hidden', tabIdx !== 1);
+
+            const contentContainer = document.getElementById('intro-content');
+            if (tabIdx === 0) {
+                contentContainer.innerHTML = `
+                    <div class="space-y-4 animate-fade-in">
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-stone-100">
+                            <h3 class="text-lg font-bold text-amber-900 mb-3 flex items-center gap-2 border-b border-amber-100 pb-2">
+                                <i class="ph-fill ph-question text-xl text-amber-600"></i> 什麼是客家八音？
+                            </h3>
+                            <p class="text-sm leading-relaxed text-stone-700">
+                                「客家八音」是客家傳統器樂演奏的代表，過去多在歲時節令、廟會慶典及婚喪喜慶等場合演出，充滿熱鬧歡騰的「鬧」氣氛。
+                                <br/><br/>
+                                名稱中的「八音」源自古代樂器製作材料的分類（金、石、絲、竹、匏、土、革、木）。資料來源參考了吳榮順老師的《台灣客家八音的傳統與傳習》。
+                            </p>
+                            <div class="mt-5 bg-amber-50 rounded-xl p-5 flex flex-col items-center justify-center border-2 border-dashed border-amber-300 text-amber-800 gap-3">
+                                <span class="font-bold text-base">歷史圖片展區</span>
+                                <p class="text-xs text-stone-600 text-center">想看更多珍貴歷史與照片嗎？</p>
+                                <a href="https://www.google.com/search?q=新北市客家文化典藏資料庫" target="_blank" class="bg-amber-600 text-white px-5 py-2.5 rounded-full text-xs font-bold hover:bg-amber-700 transition-colors flex items-center gap-1.5 shadow-md active:scale-95">
+                                    <i class="ph-bold ph-arrow-square-out"></i> 至典藏資料庫查找
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                contentContainer.innerHTML = `<div class="space-y-4 animate-fade-in pb-4">` + INSTRUMENTS.map((inst, idx) => `
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex flex-col gap-3">
+                        <div class="flex gap-4">
+                            <a href="https://www.google.com/search?q=新北市客家文化典藏資料庫+${inst.name}" target="_blank" class="w-24 h-24 bg-stone-50 rounded-xl shrink-0 flex flex-col items-center justify-center relative overflow-hidden border border-stone-200 group cursor-pointer text-center">
+                                ${inst.imageUrl 
+                                    ? `<img src="${inst.imageUrl}" alt="${inst.name}" class="absolute inset-0 w-full h-full object-cover z-0" />
+                                       <div class="absolute inset-0 bg-white/85 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex flex-col items-center justify-center backdrop-blur-sm">
+                                           <div class="text-[10px] font-black text-amber-800 mb-0.5">至資料庫查找</div>
+                                           <i class="ph-bold ph-arrow-square-out text-amber-600"></i>
+                                       </div>` 
+                                    : `<div class="text-xs font-bold text-stone-500 mb-1">${inst.name}圖片</div><div class="text-[10px] text-stone-400 leading-tight">點擊查找</div><i class="ph-bold ph-arrow-square-out text-stone-300 mt-1"></i>`
+                                }
+                            </a>
+                            <div class="flex-1 flex flex-col justify-center">
+                                <h4 class="text-lg font-bold text-amber-900 mb-1">${inst.name}</h4>
+                                <div class="mb-2"><span class="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">${inst.type}</span></div>
+                                <p class="text-xs text-stone-600 leading-relaxed line-clamp-3">${inst.desc}</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2 pt-2 border-t border-stone-100 mt-1">
+                            <button class="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 py-2 rounded-lg hover:bg-blue-100 active:bg-blue-200 transition-colors">
+                                <i class="ph-bold ph-speaker-high"></i> 試聽聲音
+                            </button>
+                            <button id="ai-btn-${idx}" onclick="getAIStory(${idx}, '${inst.name}')" class="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-purple-700 bg-purple-50 py-2 rounded-lg hover:bg-purple-100 active:bg-purple-200 transition-colors">
+                                <i class="ph-fill ph-sparkle"></i> ✨ AI 說故事
+                            </button>
+                        </div>
+                        <div id="ai-story-${idx}" class="mt-2 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs text-purple-900 leading-relaxed hidden"></div>
+                    </div>
+                `).join('') + `</div>`;
+            }
+        }
+
+        async function getAIStory(idx, instName) {
+            const btn = document.getElementById(`ai-btn-${idx}`);
+            const container = document.getElementById(`ai-story-${idx}`);
+            
+            if(btn.disabled) return;
+            
+            btn.disabled = true;
+            btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin"></i> 思考中...`;
+            btn.classList.add('opacity-50');
+            container.classList.add('hidden');
+            container.innerHTML = '';
+
+            const systemPrompt = "你是一位推廣客家八音的親切老師。";
+            const prompt = `請用繁體中文，向國小到國中的學生介紹客家八音中的樂器「${instName}」。用生動有趣的說故事語氣，大約 50~80 字，介紹它最大的特色或有趣的冷知識。請適當加上 emoji。`;
+            
+            const result = await generateGeminiContent(prompt, systemPrompt);
+            
+            btn.disabled = false;
+            btn.innerHTML = `<i class="ph-fill ph-sparkle"></i> ✨ AI 說故事`;
+            btn.classList.remove('opacity-50');
+
+            container.innerHTML = `<div class="font-bold mb-1 flex items-center gap-1.5 text-purple-700"><i class="ph-fill ph-sparkle"></i> 八音小知識</div>${result}`;
+            container.classList.remove('hidden');
+            container.classList.add('animate-zoom-in');
+        }
+
+        // ====== 影音欣賞 ======
+        function initAppreciation() {
+            const container = document.getElementById('video-list');
+            container.innerHTML = VIDEOS.map((video, idx) => `
+                <div onclick="openVideo(${idx})" class="flex flex-col bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden cursor-pointer hover:shadow-md active:scale-[0.98] transition-all group">
+                    <div class="h-44 bg-stone-900 relative flex items-center justify-center overflow-hidden shrink-0">
+                        <img src="https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg" alt="${video.title}" class="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                        <i class="ph-fill ph-play-circle text-5xl text-white z-20 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] group-hover:scale-110 transition-transform"></i>
+                        <div class="absolute top-2 right-2 bg-red-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded z-20 shadow-sm">YouTube</div>
+                    </div>
+                    <div class="p-3">
+                        <h4 class="font-bold text-stone-800 text-sm leading-snug mb-2 line-clamp-2">${video.title}</h4>
+                        <div class="text-xs font-bold text-stone-500 flex items-center justify-between">
+                            <span class="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded-md"><i class="ph-fill ph-play-circle"></i> 立即播放</span>
+                        </div>
+                    </div>
                 </div>
             `).join('');
+        }
+
+        function openVideo(idx) {
+            const video = VIDEOS[idx];
+            document.getElementById('video-modal-title').innerText = video.title;
+            document.getElementById('video-modal-desc').innerText = video.title;
+            document.getElementById('video-modal-source').innerText = `來源頻道：${video.source}`;
+            document.getElementById('video-modal-link').href = video.url;
             
-            return `
-                <div class="p-4 space-y-6 max-w-full pb-20">
-                    <section class="bg-indigo-50 p-3 rounded-xl border border-indigo-200 relative">
-                        ${state.puzzle.isProcessing ? `
-                        <div class="absolute inset-0 bg-white/70 backdrop-blur-sm z-20 flex items-center justify-center rounded-xl">
-                            <div class="bg-indigo-600 text-white px-4 py-2 rounded-full font-bold shadow-lg animate-pulse flex items-center gap-2 text-xs">
-                                <i data-lucide="cloud-download" class="animate-spin"></i>
-                                正在自動載入客家樂器音色...
-                            </div>
-                        </div>` : ''}
-                        
-                        <div class="flex justify-between items-center mb-3">
-                            <h3 class="text-sm font-bold text-indigo-900 flex items-center gap-1.5">
-                                <i data-lucide="library" class="text-indigo-600"></i> 八音拼貼 - 自動載入中
-                            </h3>
-                            <span class="text-[10px] font-bold text-indigo-600 bg-indigo-100 px-2 py-1 rounded-full">
-                                ${state.puzzle.isCloudLoaded ? '已載入' : '準備中...'}
-                            </span>
-                        </div>
-                        <div class="flex overflow-x-auto gap-2 pb-2 no-scrollbar">
-                            ${uploadHtml || '<p class="text-xs text-indigo-400 italic">等待自動載入...</p>'}
-                        </div>
-                    </section>
+            const iframeSrc = `https://www.youtube.com/embed/${video.videoId}?autoplay=1${video.si ? `&si=${video.si}` : ''}`;
+            document.getElementById('video-iframe-container').innerHTML = `<iframe class="absolute inset-0 w-full h-full" src="${iframeSrc}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+            
+            document.getElementById('video-modal').classList.remove('hidden');
+        }
+
+        function closeVideo() {
+            document.getElementById('video-modal').classList.add('hidden');
+            document.getElementById('video-iframe-container').innerHTML = ''; // 停止影片
+        }
+
+        // ====== 測驗遊戲 ======
+        function initQuiz() {
+            quizState = { current: 0, score: 0, optionSelected: false };
+            document.getElementById('quiz-result-area').classList.add('hidden');
+            document.getElementById('quiz-question-area').classList.remove('hidden');
+            switchView('quiz');
+            renderQuizQuestion();
+        }
+
+        function renderQuizQuestion() {
+            const q = QUIZ_QUESTIONS[quizState.current];
+            document.getElementById('quiz-progress').innerText = `問題 ${quizState.current + 1} / ${QUIZ_QUESTIONS.length}`;
+            document.getElementById('quiz-question-text').innerText = q.question;
+            
+            quizState.optionSelected = false;
+            
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = q.options.map((opt, idx) => `
+                <button id="quiz-opt-${idx}" onclick="handleQuizAnswer(${idx})" class="w-full text-left p-4 rounded-xl border-2 transition-all font-bold text-sm text-stone-700 shadow-sm flex items-center border-stone-100 bg-white hover:border-amber-400 active:bg-amber-50">
+                    <span class="inline-block w-6 h-6 bg-stone-100 rounded-full text-center leading-6 mr-3 text-xs border border-stone-200 shrink-0">${String.fromCharCode(65 + idx)}</span>
+                    <span class="flex-1">${opt}</span>
+                </button>
+            `).join('');
+        }
+
+        function handleQuizAnswer(idx) {
+            if (quizState.optionSelected) return;
+            quizState.optionSelected = true;
+            
+            const q = QUIZ_QUESTIONS[quizState.current];
+            const isCorrect = idx === q.answer;
+            if (isCorrect) quizState.score++;
+
+            // 標示答案樣式
+            q.options.forEach((_, i) => {
+                const btn = document.getElementById(`quiz-opt-${i}`);
+                btn.className = "w-full text-left p-4 rounded-xl border-2 transition-all font-bold text-sm text-stone-700 shadow-sm flex items-center";
+                if (i === q.answer) {
+                    btn.classList.add('border-green-500', 'bg-green-50', 'text-green-800', 'shadow-md');
+                } else if (i === idx) {
+                    btn.classList.add('border-red-500', 'bg-red-50', 'text-red-800', 'opacity-90');
+                } else {
+                    btn.classList.add('border-stone-100', 'opacity-50', 'bg-stone-50');
+                }
+            });
+
+            setTimeout(() => {
+                if (quizState.current < QUIZ_QUESTIONS.length - 1) {
+                    quizState.current++;
+                    renderQuizQuestion();
+                } else {
+                    showQuizResult();
+                }
+            }, 1000);
+        }
+
+        function showQuizResult() {
+            document.getElementById('quiz-question-area').classList.add('hidden');
+            
+            const getScoreTitle = (score, total) => {
+                const percentage = score / total;
+                if (percentage === 1) return { title: '八音大神', msg: '太神啦！你對客家八音瞭若指掌！' };
+                if (percentage >= 0.8) return { title: '八音名家', msg: '非常厲害！具備深厚的八音知識！' };
+                if (percentage >= 0.6) return { title: '八音高手', msg: '表現不錯喔！繼續保持！' };
+                if (percentage >= 0.3) return { title: '八音好手', msg: '有點基礎，再多聽多看會更棒！' };
+                return { title: '八音新手', msg: '沒關係，從現在開始認識客家八音吧！' };
+            };
+
+            const result = getScoreTitle(quizState.score, QUIZ_QUESTIONS.length);
+            document.getElementById('quiz-result-title').innerText = result.title;
+            document.getElementById('quiz-result-msg').innerText = result.msg;
+            document.getElementById('quiz-final-score').innerText = quizState.score;
+            document.getElementById('quiz-total-score').innerText = `/ ${QUIZ_QUESTIONS.length}`;
+            
+            document.getElementById('quiz-result-area').classList.remove('hidden');
+        }
+
+        // ====== AI Chat ======
+        function appendChatMessage(role, text) {
+            const container = document.getElementById('chat-messages');
+            const isModel = role === 'model';
+            const html = `
+                <div class="flex ${isModel ? 'justify-start' : 'justify-end'}">
+                    ${isModel ? '<div class="w-8 h-8 bg-purple-200 rounded-full flex items-center justify-center mr-2 mt-1 shrink-0 text-purple-700 text-xs font-bold shadow-sm">大師</div>' : ''}
+                    <div class="max-w-[75%] p-3 rounded-2xl text-sm leading-relaxed shadow-sm ${!isModel ? 'bg-amber-600 text-white rounded-br-sm' : 'bg-white text-stone-800 border border-purple-100 rounded-bl-sm'}">
+                        ${text}
+                    </div>
                 </div>
             `;
-        };
-<!-- ... (後段代碼保持不變) ... -->
+            container.insertAdjacentHTML('beforeend', html);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function handleSendChat() {
+            const input = document.getElementById('chat-input');
+            const btn = document.getElementById('chat-send-btn');
+            const query = input.value.trim();
+            if (!query || isChatLoading) return;
+
+            input.value = '';
+            input.disabled = true;
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+            isChatLoading = true;
+            
+            appendChatMessage('user', query);
+            document.getElementById('chat-loading').classList.remove('hidden');
+            document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+
+            const systemInstruction = `你是一位充滿熱忱且知識淵博的「客家八音大師」。你的任務是回答使用者關於客家八音、傳統樂器（如嗩吶、二胡、揚琴、打擊樂器）、客家文化的相關問題。
+            請遵循以下規則：
+            1. 使用繁體中文回答。
+            2. 語氣要親切、有趣、鼓勵發問，就像一位慈祥的老師。
+            3. 適時使用 Emoji 來增加親和力。
+            4. 字數盡量控制在 100~150 字以內，讓年輕人或小朋友也能輕鬆讀懂。
+            5. 如果問題與客家八音、音樂、客家文化無關，請委婉地引導回八音的主題。`;
+
+            const result = await generateGeminiContent(query, systemInstruction);
+            
+            document.getElementById('chat-loading').classList.add('hidden');
+            appendChatMessage('model', result);
+
+            input.disabled = false;
+            btn.disabled = false;
+            btn.classList.remove('opacity-50');
+            isChatLoading = false;
+            input.focus();
+        }
+
+        // --- 啟動初始化 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initHome();
+            switchIntroTab(0);
+            initAppreciation();
+        });
+
+    </script>
+</body>
+</html>
