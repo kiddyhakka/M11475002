@@ -77,44 +77,7 @@
     <!-- 應用程式邏輯 -->
     <script>
         // ==========================================
-        // 1. Gemini API Helper
-        // ==========================================
-        const generateGeminiContent = async (prompt, systemInstruction) => {
-            const apiKey = ""; // API Key 會在執行環境自動提供
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] }
-            };
-            
-            const fetchWithRetry = async (retries = 5) => {
-                const delays = [1000, 2000, 4000, 8000, 16000];
-                for (let i = 0; i < retries; i++) {
-                    try {
-                        const response = await fetch(url, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-                        if (!response.ok) throw new Error('API error');
-                        return await response.json();
-                    } catch (err) {
-                        if (i === retries - 1) throw err;
-                        await new Promise(r => setTimeout(r, delays[i]));
-                    }
-                }
-            };
-
-            try {
-                const data = await fetchWithRetry();
-                return data.candidates?.[0]?.content?.parts?.[0]?.text || "哎呀，大師正在閉關修煉，請稍後再試！";
-            } catch (error) {
-                return "連線失敗，大師暫時無法回應，請檢查網路後再試。";
-            }
-        };
-
-        // ==========================================
-        // 2. 靜態資料與音效引擎 (音樂拼圖)
+        // 1. 靜態資料與音效引擎 (音樂拼圖)
         // ==========================================
         const PENTATONIC_SCALE = [
             { label: '高Do', freq: 523.25 }, // C5
@@ -404,19 +367,14 @@
         };
 
         // ==========================================
-        // 3. 狀態管理 (State)
+        // 2. 狀態管理 (State)
         // ==========================================
         const state = {
             currentView: 'home',
-            intro: { activeTab: 0, aiStories: {} },
+            intro: { activeTab: 0 },
             appreciation: { playingVideo: null },
             game: { subView: 'menu' },
             quiz: { currentQ: 0, score: 0, showResult: false, selectedOption: null },
-            chat: {
-                inputValue: '',
-                messages: [{ role: 'model', text: '你好！我是客家八音大師 ✨。關於八音的歷史、樂器或是音樂特色，想問我什麼呢？' }],
-                isLoading: false
-            },
             puzzle: {
                 isPlaying: false,
                 bpm: 105,
@@ -434,7 +392,7 @@
         };
 
         // ==========================================
-        // 4. 核心渲染機制
+        // 3. 核心渲染機制
         // ==========================================
         function renderApp() {
             const root = document.getElementById('app-root');
@@ -456,26 +414,15 @@
                 case 'intro': viewHtml = renderIntroView(); break;
                 case 'appreciation': viewHtml = renderAppreciationView(); break;
                 case 'game': viewHtml = renderGameView(); break;
-                case 'ai-chat': viewHtml = renderAiChatView(); break;
                 default: viewHtml = renderHomeView(); break;
             }
 
             root.innerHTML = viewHtml;
             lucide.createIcons();
-
-            if (state.currentView === 'ai-chat') {
-                const chatBox = document.getElementById('chat-history-box');
-                if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
-                const chatInput = document.getElementById('chat-input');
-                if (chatInput) {
-                    chatInput.value = state.chat.inputValue;
-                    chatInput.focus();
-                }
-            }
         }
 
         // ==========================================
-        // 5. 視圖渲染函數與事件處理
+        // 4. 視圖渲染函數與事件處理
         // ==========================================
 
         window.stopPuzzlePlayback = () => {
@@ -500,7 +447,6 @@
                 { id: 'intro', title: '客家八音暨樂器介紹', icon: 'info', color: 'bg-blue-500', desc: '認識傳統與樂器' },
                 { id: 'appreciation', title: '客家八音欣賞', icon: 'play-square', color: 'bg-emerald-600', desc: '影音與音樂饗宴' },
                 { id: 'game', title: '我是八音達人', icon: 'trophy', color: 'bg-amber-500', desc: '遊戲與測驗挑戰' },
-                { id: 'ai-chat', title: '✨ 八音大師解惑', icon: 'message-circle', color: 'bg-purple-600', desc: 'AI 大師在線回答' },
             ];
 
             let menuHtml = menus.map((menu, idx) => `
@@ -535,17 +481,6 @@
         // --- 樂器介紹 ---
         window.switchIntroTab = (idx) => {
             state.intro.activeTab = idx;
-            renderApp();
-        };
-
-        window.handleGetStory = async (idx, instName) => {
-            if (!state.intro.aiStories[idx]) state.intro.aiStories[idx] = {};
-            state.intro.aiStories[idx] = { loading: true, text: '' };
-            renderApp();
-            const systemPrompt = "你是一位推廣客家八音的親切老師。";
-            const prompt = `請用繁體中文，向國小到國中的學生介紹客家八音中的樂器「${instName}」。用生動有趣的說故事語氣，大約 50~80 字，介紹它最大的特色或有趣的冷知識。請適當加上 emoji。`;
-            const result = await generateGeminiContent(prompt, systemPrompt);
-            state.intro.aiStories[idx] = { loading: false, text: result };
             renderApp();
         };
 
@@ -588,18 +523,6 @@
                 contentHtml = `
                     <div class="space-y-4 animate-in fade-in pb-4">
                         ${INSTRUMENTS.map((inst, idx) => {
-                            const story = state.intro.aiStories[idx];
-                            const storyHtml = story && !story.loading && story.text ? `
-                                <div class="mt-2 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs text-purple-900 leading-relaxed animate-in fade-in zoom-in">
-                                    <div class="font-bold mb-1 flex items-center gap-1.5 text-purple-700">
-                                        <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i> 八音小知識
-                                    </div>
-                                    ${story.text}
-                                </div>
-                            ` : '';
-                            
-                            const btnIcon = (story && story.loading) ? '<i data-lucide="loader-2" class="animate-spin" style="width: 14px; height: 14px;"></i>' : '<i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>';
-                            
                             const imgHtml = inst.imageUrl ? `
                                 <img src="${inst.imageUrl}" alt="${inst.name}" class="absolute inset-0 w-full h-full object-cover z-0" />
                                 <div class="absolute inset-0 bg-white/85 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity z-10 flex flex-col items-center justify-center backdrop-blur-sm">
@@ -628,16 +551,12 @@
                                         <p class="text-xs text-stone-600 leading-relaxed line-clamp-3">${inst.desc}</p>
                                     </div>
                                 </div>
-                                <div class="flex flex-wrap gap-2 pt-2 border-t border-stone-100 mt-1">
-                                    ${inst.audioUrl ? `
-                                    <button onclick="playPreviewAudio('${inst.audioUrl}')" class="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 py-2 rounded-lg hover:bg-blue-100 active:bg-blue-200 transition-colors">
+                                ${inst.audioUrl ? `
+                                <div class="pt-2 border-t border-stone-100 mt-1">
+                                    <button onclick="playPreviewAudio('${inst.audioUrl}')" class="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 py-2 rounded-lg hover:bg-blue-100 active:bg-blue-200 transition-colors">
                                         <i data-lucide="volume-2" style="width: 14px; height: 14px;"></i> 試聽聲音
-                                    </button>` : ''}
-                                    <button onclick="handleGetStory(${idx}, '${inst.name}')" ${(story && story.loading) ? 'disabled' : ''} class="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-purple-700 bg-purple-50 py-2 rounded-lg hover:bg-purple-100 active:bg-purple-200 disabled:opacity-50 transition-colors">
-                                        ${btnIcon} ✨ AI 說故事
                                     </button>
-                                </div>
-                                ${storyHtml}
+                                </div>` : ''}
                             </div>
                             `;
                         }).join('')}
@@ -747,7 +666,6 @@
             if (view === 'quiz') {
                 state.quiz = { currentQ: 0, score: 0, showResult: false, selectedOption: null };
             } else if (view === 'puzzle') {
-                // 自動觸發雲端載入音檔
                 if (!state.puzzle.isCloudLoaded && !state.puzzle.isProcessing) {
                     setTimeout(() => window.puzzleLoadCloudAudios(), 100);
                 }
@@ -755,7 +673,6 @@
             renderApp();
         };
 
-        // -> Quiz 邏輯
         window.answerQuiz = (idx) => {
             if (state.quiz.selectedOption !== null) return;
             state.quiz.selectedOption = idx;
@@ -775,7 +692,6 @@
             }, 1000);
         };
 
-        // -> 八音拼貼邏輯
         window.puzzleLoadCloudAudios = async () => {
             if (state.puzzle.isProcessing || state.puzzle.isCloudLoaded) return;
             state.puzzle.isProcessing = true;
@@ -785,50 +701,28 @@
             const baseUrl = "https://kiddyhakka.github.io/M11475002/eight";
             let updatedUploads = { ...state.puzzle.uploadedFiles };
 
-            // 預期的檔名對應表 (若 GitHub 上的檔名不同，可直接修改此處)
             const fileMapping = {
-                'bigGong': '大鑼',
-                'smallGong': '小鑼',
-                'dingDang': '叮噹',
-                'bo': '鈸',
-                'tanggu': '堂鼓',
-                'bangziLow': '梆子(低)', 
-                'bangziHigh': '梆子(高)',
-                'recorder': '直笛',
-                'panghu': '胖胡',
-                'yehu': '椰胡',
-                'suonaLow': '嗩吶(低)',
-                'suonaHigh': '嗩吶(高)'
+                'bigGong': '大鑼', 'smallGong': '小鑼', 'dingDang': '叮噹', 'bo': '鈸',
+                'tanggu': '堂鼓', 'bangziLow': '梆子(低)', 'bangziHigh': '梆子(高)',
+                'recorder': '直笛', 'panghu': '胖胡', 'yehu': '椰胡',
+                'suonaLow': '嗩吶(低)', 'suonaHigh': '嗩吶(高)'
             };
 
             for (const track of TRACKS) {
                 try {
                     const baseName = fileMapping[track.id] || track.name;
                     let finalName = `${baseName}.mp3`;
-                    
-                    // 自動嘗試抓取 .mp3，如果沒有再嘗試 .wav 與 .m4a 格式
                     let response = await fetch(`${baseUrl}/${encodeURIComponent(baseName)}.mp3`);
-                    
-                    if (!response.ok) {
-                        response = await fetch(`${baseUrl}/${encodeURIComponent(baseName)}.wav`);
-                        finalName = `${baseName}.wav`;
-                    }
-                    if (!response.ok) {
-                        response = await fetch(`${baseUrl}/${encodeURIComponent(baseName)}.m4a`);
-                        finalName = `${baseName}.m4a`;
-                    }
+                    if (!response.ok) { response = await fetch(`${baseUrl}/${encodeURIComponent(baseName)}.wav`); finalName = `${baseName}.wav`; }
+                    if (!response.ok) { response = await fetch(`${baseUrl}/${encodeURIComponent(baseName)}.m4a`); finalName = `${baseName}.m4a`; }
 
                     if (response.ok) {
                         const blob = await response.blob();
                         const file = new File([blob], finalName, { type: blob.type || 'audio/mpeg' });
                         const result = await AudioEngine.loadSmartSample(track.id, file, track.isMelodic);
                         updatedUploads[track.id] = { name: '已載入', notes: result.extracted };
-                    } else {
-                        console.warn(`找不到 ${track.name} 的音檔 (${baseName})`);
                     }
-                } catch (err) { 
-                    console.error(`載入 ${track.name} 失敗:`, err); 
-                }
+                } catch (err) { console.error(`載入 ${track.name} 失敗:`, err); }
             }
             
             state.puzzle.uploadedFiles = updatedUploads;
@@ -946,7 +840,6 @@
             state.puzzle.bpm = Number(val);
             document.getElementById('bpm-display').innerHTML = `<i data-lucide="sliders" style="width: 16px; height: 16px;"></i> 速度: ${state.puzzle.bpm}`;
             lucide.createIcons();
-            // 即時更新速度不中斷
             if (state.puzzle.isPlaying) {
                 clearInterval(state.puzzle.timerRef);
                 const stepDuration = (60000 / state.puzzle.bpm) / 4;
@@ -966,11 +859,6 @@
             if(wIcon) wIcon.className = state.puzzle.reverbLevel > 0 ? "text-blue-400" : "";
         };
 
-        window.puzzleToggleHumanize = (checked) => {
-            state.puzzle.humanize = checked;
-            renderApp();
-        };
-
         window.puzzlePreviewTrack = (trackId) => {
             AudioEngine.init();
             const track = TRACKS.find(t => t.id === trackId);
@@ -981,39 +869,12 @@
         };
 
         function renderPuzzleView() {
-            // 工具列 HTML
             const toolsHtml = PENTATONIC_SCALE.map((pitch, index) => `
                 <button onclick="puzzleSetTool(${index})" class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${state.puzzle.selectedTool === index ? 'bg-blue-600 text-white shadow-md transform scale-105' : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100'}">
                     ${pitch.label}
                 </button>
             `).join('');
 
-            // 雲端載入區 HTML
-            const uploadHtml = TRACKS.map(track => {
-                const fileInfo = state.puzzle.uploadedFiles[track.id];
-                const baseClass = fileInfo ? 'bg-indigo-100 border-indigo-400 text-indigo-800 shadow-inner' : 'bg-white border-indigo-200 text-indigo-400 opacity-80';
-                
-                let contentHtml = !fileInfo ? `
-                    <i data-lucide="cloud" style="width: 14px; height: 14px;" class="opacity-50"></i>
-                    <span class="text-[9px] font-medium text-center leading-tight">等待載入</span>
-                ` : `
-                    <span class="text-[9px] font-bold truncate w-full text-center px-1">${fileInfo.name}</span>
-                    <div class="flex flex-wrap justify-center gap-0.5 w-full">
-                        ${fileInfo.notes.slice(0, 2).map(n => `<span class="text-[8px] bg-indigo-600 text-white px-1 rounded shadow-sm">${n}</span>`).join('')}
-                        ${fileInfo.notes.length > 2 ? `<span class="text-[8px] text-indigo-600">+${fileInfo.notes.length - 2}</span>` : ''}
-                    </div>
-                `;
-
-                return `
-                <div class="flex flex-col gap-1 w-14 shrink-0">
-                    <span class="text-[10px] font-bold text-indigo-900 text-center">${track.name}</span>
-                    <div class="flex flex-col items-center justify-center gap-1 p-1 border-2 border-dashed rounded-lg transition-all h-16 ${baseClass}">
-                        ${contentHtml}
-                    </div>
-                </div>`;
-            }).join('');
-
-            // 預覽打擊板 HTML
             const padsHtml = TRACKS.map(track => {
                 const hasCustomSample = !!state.puzzle.uploadedFiles[track.id];
                 const padClass = hasCustomSample ? 'bg-emerald-600 hover:bg-emerald-500 ring-2 ring-emerald-300 ring-offset-1 shadow-emerald-200/50' : `${track.color} hover:${track.activeColor}`;
@@ -1024,7 +885,6 @@
                 </button>`;
             }).join('');
 
-            // 網格 HTML
             const gridHtml = TRACKS.map((track, trackIndex) => {
                 const hasCustomSample = !!state.puzzle.uploadedFiles[track.id];
                 const trackBaseColor = hasCustomSample ? 'bg-emerald-500' : track.color;
@@ -1058,8 +918,6 @@
             return `
                 <div class="flex flex-col h-full w-full bg-stone-100 absolute inset-0 z-30 animate-in slide-in-from-right-4 overflow-y-auto overflow-x-hidden">
                     <div class="p-4 space-y-6 max-w-full pb-20">
-                        
-                        <!-- 1. 預覽區 -->
                         <section>
                             <h3 class="text-sm font-bold text-stone-700 flex items-center gap-1.5 mb-3">
                                 <i data-lucide="volume-2" class="text-stone-500" style="width: 16px; height: 16px;"></i> 1. 樂器聲相預覽 (請稍待載入完成，按鈕呈綠色)
@@ -1068,8 +926,6 @@
                                 ${padsHtml}
                             </div>
                         </section>
-
-                        <!-- 2. 網格區 -->
                         <section>
                             <div class="flex flex-col sm:flex-row justify-between mb-3 gap-2">
                                 <h3 class="text-sm font-bold text-stone-700 flex items-center gap-1.5">
@@ -1090,8 +946,6 @@
                                 </div>
                             </div>
                         </section>
-                        
-                        <!-- 3. 音樂性混音控制台 -->
                         <section class="bg-stone-800 p-4 rounded-xl border border-stone-900 flex flex-col gap-4 shadow-lg text-white">
                             <div class="flex justify-between items-center gap-2">
                                 <button onclick="puzzleTogglePlay()" class="flex-1 flex justify-center items-center gap-1.5 py-2.5 rounded-full text-sm font-extrabold text-white transition-all shadow-md active:scale-95 ${state.puzzle.isPlaying ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-500 hover:bg-emerald-400'}">
@@ -1102,7 +956,6 @@
                                     <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
                                 </button>
                             </div>
-                            
                             <div class="bg-stone-900 p-3 rounded-xl border border-stone-700/50 space-y-4">
                                 <div class="flex justify-between items-center">
                                     <label class="flex items-center gap-2 cursor-pointer group">
@@ -1138,7 +991,6 @@
 
         function renderGameView() {
             if (state.game.subView === 'puzzle') return renderPuzzleView();
-
             if (state.game.subView === 'quiz') {
                 if (state.quiz.showResult) {
                     const result = getScoreTitle(state.quiz.score, QUIZ_QUESTIONS.length);
@@ -1235,97 +1087,8 @@
             `;
         }
 
-        // --- AI 聊天室 ---
-        window.handleChatInput = (val) => {
-            state.chat.inputValue = val;
-        };
-
-        window.checkChatEnter = (e) => {
-            if (e.key === 'Enter') handleChatSend();
-        };
-
-        window.handleChatSend = async () => {
-            const query = state.chat.inputValue.trim();
-            if (!query || state.chat.isLoading) return;
-            
-            state.chat.inputValue = '';
-            state.chat.messages.push({ role: 'user', text: query });
-            state.chat.isLoading = true;
-            renderApp();
-
-            const systemInstruction = `你是一位充滿熱忱且知識淵博的「客家八音大師」。你的任務是回答使用者關於客家八音、傳統樂器（如嗩吶、二胡、揚琴、打擊樂器）、客家文化的相關問題。
-            請遵循以下規則：
-            1. 使用繁體中文回答。
-            2. 語氣要親切、有趣、鼓勵發問，就像一位慈祥的老師。
-            3. 適時使用 Emoji 來增加親和力。
-            4. 字數盡量控制在 100~150 字以內，讓年輕人或小朋友也能輕鬆讀懂。
-            5. 如果問題與客家八音、音樂、客家文化無關，請委婉地引導回八音的主題。`;
-
-            const result = await generateGeminiContent(query, systemInstruction);
-            
-            state.chat.messages.push({ role: 'model', text: result });
-            state.chat.isLoading = false;
-            renderApp();
-        };
-
-        function renderAiChatView() {
-            const messagesHtml = state.chat.messages.map(msg => `
-                <div class="flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}">
-                    ${msg.role === 'model' ? '<div class="w-8 h-8 bg-purple-200 rounded-full flex items-center justify-center mr-2 mt-1 shrink-0 text-purple-700 text-xs font-bold shadow-sm">大師</div>' : ''}
-                    <div class="max-w-[75%] p-3 rounded-2xl text-sm leading-relaxed shadow-sm ${msg.role === 'user' ? 'bg-amber-600 text-white rounded-br-sm' : 'bg-white text-stone-800 border border-purple-100 rounded-bl-sm'}">
-                        ${msg.text}
-                    </div>
-                </div>
-            `).join('');
-
-            const loadingHtml = state.chat.isLoading ? `
-                <div class="flex justify-start animate-in fade-in">
-                    <div class="w-8 h-8 bg-purple-200 rounded-full flex items-center justify-center mr-2 mt-1 shrink-0 text-purple-700 text-xs font-bold shadow-sm">大師</div>
-                    <div class="bg-white p-3 rounded-2xl rounded-bl-sm border border-purple-100 shadow-sm text-purple-500 flex items-center gap-2 text-sm font-bold">
-                        <i data-lucide="loader-2" class="animate-spin" style="width: 16px; height: 16px;"></i> 大師思考中...
-                    </div>
-                </div>
-            ` : '';
-
-            return `
-                <div class="w-full h-full flex flex-col bg-stone-50 relative">
-                    <div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-3 flex gap-3 items-center shrink-0 shadow-sm z-10">
-                        <div class="bg-white/20 p-2 rounded-full">
-                            <i data-lucide="sparkles" style="width: 20px; height: 20px;"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-sm font-black tracking-wide">八音大師解惑專區</h2>
-                            <p class="text-[10px] text-purple-100">隨時問我關於八音的問題！</p>
-                        </div>
-                    </div>
-
-                    <div id="chat-history-box" class="flex-1 p-4 overflow-y-auto space-y-4 bg-purple-50/40 scroll-smooth">
-                        ${messagesHtml}
-                        ${loadingHtml}
-                    </div>
-
-                    <div class="p-3 bg-white border-t border-stone-200 shrink-0 sticky bottom-0">
-                        <div class="flex items-center gap-2 bg-stone-100 border border-stone-200 p-1.5 rounded-full focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
-                            <input
-                                id="chat-input"
-                                type="text"
-                                oninput="handleChatInput(this.value)"
-                                onkeydown="checkChatEnter(event)"
-                                placeholder="輸入您的問題..."
-                                class="flex-1 bg-transparent px-3 py-1.5 text-sm outline-none text-stone-700 placeholder:text-stone-400"
-                                ${state.chat.isLoading ? 'disabled' : ''}
-                            />
-                            <button onclick="handleChatSend()" ${(!state.chat.inputValue.trim() || state.chat.isLoading) ? 'disabled' : ''} class="bg-purple-600 text-white p-2 rounded-full hover:bg-purple-700 disabled:opacity-50 transition-colors flex items-center justify-center shadow-sm active:scale-95">
-                                <i data-lucide="send" style="width: 16px; height: 16px;"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
         // ==========================================
-        // 6. 初始化執行
+        // 5. 初始化執行
         // ==========================================
         document.addEventListener('DOMContentLoaded', () => {
             renderApp();
