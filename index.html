@@ -427,6 +427,7 @@
                 humanize: true,
                 uploadedFiles: {},
                 isProcessing: false,
+                isCloudLoaded: false,
                 timerRef: null,
                 currentStepRef: 0
             }
@@ -739,6 +740,11 @@
             state.game.subView = view;
             if (view === 'quiz') {
                 state.quiz = { currentQ: 0, score: 0, showResult: false, selectedOption: null };
+            } else if (view === 'puzzle') {
+                // 自動觸發雲端載入音檔
+                if (!state.puzzle.isCloudLoaded && !state.puzzle.isProcessing) {
+                    setTimeout(() => window.puzzleLoadCloudAudios(), 100);
+                }
             }
             renderApp();
         };
@@ -765,7 +771,7 @@
 
         // -> 八音拼貼邏輯
         window.puzzleLoadCloudAudios = async () => {
-            if (state.puzzle.isProcessing) return;
+            if (state.puzzle.isProcessing || state.puzzle.isCloudLoaded) return;
             state.puzzle.isProcessing = true;
             AudioEngine.init();
             renderApp(); 
@@ -821,6 +827,7 @@
             
             state.puzzle.uploadedFiles = updatedUploads;
             state.puzzle.isProcessing = false;
+            state.puzzle.isCloudLoaded = true;
             renderApp();
         };
 
@@ -1063,16 +1070,16 @@
                             <div class="absolute inset-0 bg-white/70 backdrop-blur-sm z-20 flex items-center justify-center rounded-xl">
                                 <div class="bg-indigo-600 text-white px-4 py-2 rounded-full font-bold shadow-lg animate-pulse flex items-center gap-2 text-xs">
                                     <i data-lucide="cloud-download" class="animate-spin" style="width: 16px; height: 16px;"></i>
-                                    正在從雲端載入並切片音檔...
+                                    正在自動從雲端載入音色庫...
                                 </div>
                             </div>` : ''}
                             <div class="flex justify-between items-center mb-3">
                                 <h3 class="text-sm font-bold text-indigo-900 flex items-center gap-1.5">
-                                    <i data-lucide="cloud-download" class="text-indigo-600" style="width: 16px; height: 16px;"></i> 1. 載入雲端真實錄音
+                                    <i data-lucide="library" class="text-indigo-600" style="width: 16px; height: 16px;"></i> 1. 樂器音色庫狀態
                                 </h3>
-                                <button onclick="puzzleLoadCloudAudios()" class="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold py-1.5 px-3 rounded-full cursor-pointer shadow-md active:scale-95 transition-all">
-                                    <i data-lucide="download" style="width: 12px; height: 12px;"></i> 一鍵載入雲端音檔
-                                </button>
+                                ${state.puzzle.isCloudLoaded 
+                                    ? '<span class="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full flex items-center gap-1"><i data-lucide="check-circle" style="width: 12px; height: 12px;"></i> 載入完成</span>' 
+                                    : '<span class="text-[10px] font-bold text-indigo-500 bg-indigo-100 px-2 py-1 rounded-full flex items-center gap-1"><i data-lucide="loader-2" class="animate-spin" style="width: 12px; height: 12px;"></i> 自動載入中</span>'}
                             </div>
                             <div class="flex overflow-x-auto gap-2 pb-2 no-scrollbar">
                                 ${uploadHtml}
