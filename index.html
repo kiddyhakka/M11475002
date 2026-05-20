@@ -375,8 +375,8 @@
 
         const INTRO_TABS = ['客家八音是什麼?', '樂器介紹'];
         const INSTRUMENTS = [
-            { name: '嗩吶', desc: '客家八音最重要的主旋律樂器，聲音高亢明亮。', type: '吹管樂器', imageUrl: 'https://www.hakka-portal.ntpc.gov.tw/archive/article/8/normal/part_623_7055099_94710.jpg' },
-            { name: '二胡/胖胡', desc: '重要的擦弦樂器，負責和聲與輔助旋律。', type: '擦弦樂器', imageUrl: 'https://dcm.s3.hicloud.net.tw/new/collection/2025-09-12/43c7e3b2-9208-42a1-9398-7ac467762a6c/98ae977c-f197-4378-a97f-05ac67f10b48_f.jpg' },
+            { name: '嗩吶', desc: '客家八音最重要的主旋律樂器，聲音高亢明亮。', type: '吹管樂器', imageUrl: 'https://www.hakka-portal.ntpc.gov.tw/archive/article/8/normal/part_623_7055099_94710.jpg', audioUrl: 'https://kiddyhakka.github.io/M11475002/eight/嗩吶(低).m4a' },
+            { name: '二胡/胖胡', desc: '重要的擦弦樂器，負責和聲與輔助旋律。', type: '擦弦樂器', imageUrl: 'https://dcm.s3.hicloud.net.tw/new/collection/2025-09-12/43c7e3b2-9208-42a1-9398-7ac467762a6c/98ae977c-f197-4378-a97f-05ac67f10b48_f.jpg', audioUrl: 'https://kiddyhakka.github.io/M11475002/eight/胖胡.m4a' },
             { name: '揚琴', desc: '擊弦樂器，音色清脆，常用於伴奏。', type: '擊弦樂器', imageUrl: 'https://collections.culture.tw/ShowGalImage.aspx?SYSUID=17&IMG=KQ5S5NMHM1MXM4KM5KM6MG0V06M6MGMNM4MBMPM4MP0V0BMYKMK5KHM5MJMDMQKAK4KJ5SK7MCMKM65A5SKLKA5SKEKY5MKL5TKJMWKXK8KP5UMS5O5TKQK4K2K6MD0EM2MB06ME0GM6MZ0RMWMF0GME&TEXT=K7KG575Y&FROM=5YKK57' },
             { name: '打擊樂器組', desc: '包含堂鼓、小鈸、大鑼、小鑼等，掌控節奏與氣氛。', type: '打擊樂器', imageUrl: 'https://www.hakka.gov.tw/userfiles/image/%E5%A4%A7%E5%A4%A5%E6%88%BF%E8%97%9D%E8%A1%93%E5%9C%98.jpg' },
         ];
@@ -549,6 +549,11 @@
             renderApp();
         };
 
+        window.playPreviewAudio = (url) => {
+            const audio = new Audio(url);
+            audio.play().catch(e => console.error("播放失敗:", e));
+        };
+
         function renderIntroView() {
             const tabsHtml = INTRO_TABS.map((tab, idx) => `
                 <button onclick="switchIntroTab(${idx})" class="flex-1 py-3 text-sm font-bold transition-all relative ${state.intro.activeTab === idx ? 'text-amber-700 bg-amber-50/50' : 'text-stone-500 hover:bg-stone-50'}">
@@ -624,9 +629,10 @@
                                     </div>
                                 </div>
                                 <div class="flex flex-wrap gap-2 pt-2 border-t border-stone-100 mt-1">
-                                    <button class="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 py-2 rounded-lg hover:bg-blue-100 active:bg-blue-200 transition-colors">
+                                    ${inst.audioUrl ? `
+                                    <button onclick="playPreviewAudio('${inst.audioUrl}')" class="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 py-2 rounded-lg hover:bg-blue-100 active:bg-blue-200 transition-colors">
                                         <i data-lucide="volume-2" style="width: 14px; height: 14px;"></i> 試聽聲音
-                                    </button>
+                                    </button>` : ''}
                                     <button onclick="handleGetStory(${idx}, '${inst.name}')" ${(story && story.loading) ? 'disabled' : ''} class="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-purple-700 bg-purple-50 py-2 rounded-lg hover:bg-purple-100 active:bg-purple-200 disabled:opacity-50 transition-colors">
                                         ${btnIcon} ✨ AI 說故事
                                     </button>
