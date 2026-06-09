@@ -282,18 +282,166 @@
                 source.start(actualStartTime);
                 source.stop(actualStartTime + duration + release + 0.1);
             },
-            playSynth(type, freq, duration, pan, velocity, startTimeOffset) {
+            // 客家傳統吹打打擊樂器實體特性合成音色模擬 (Fallback Synthesizer)
+            playSynth(trackId, freq, duration, pan, velocity, startTimeOffset) {
                 if(!this.ctx) return;
-                const osc = this.ctx.createOscillator();
-                const gainNode = this.ctx.createGain();
-                const pannerNode = this.getPanner('synth', pan);
-                osc.type = type; osc.frequency.setValueAtTime(freq || 200, this.ctx.currentTime + startTimeOffset);
-                const actualStartTime = this.ctx.currentTime + startTimeOffset;
-                gainNode.gain.setValueAtTime(0, actualStartTime);
-                gainNode.gain.linearRampToValueAtTime(velocity * 0.5, actualStartTime + 0.05);
-                gainNode.gain.exponentialRampToValueAtTime(0.001, actualStartTime + duration);
-                osc.connect(gainNode); gainNode.connect(pannerNode);
-                osc.start(actualStartTime); osc.stop(actualStartTime + duration);
+                const now = this.ctx.currentTime + startTimeOffset;
+                const pannerNode = this.getPanner(trackId, pan);
+
+                if (trackId === 'bigGong') {
+                    // 大鑼：向下低頻滑動的金屬敲擊音
+                    const osc = this.ctx.createOscillator();
+                    const gainNode = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(125, now);
+                    osc.frequency.exponentialRampToValueAtTime(55, now + duration * 0.7);
+                    
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(450, now);
+                    
+                    gainNode.gain.setValueAtTime(0, now);
+                    gainNode.gain.linearRampToValueAtTime(velocity * 0.45, now + 0.015);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                    
+                    osc.connect(filter);
+                    filter.connect(gainNode);
+                    gainNode.connect(pannerNode);
+                    osc.start(now);
+                    osc.stop(now + duration + 0.15);
+                } else if (trackId === 'smallGong') {
+                    // 小鑼：清脆快速上滑的高音銅鑼
+                    const osc = this.ctx.createOscillator();
+                    const gainNode = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(620, now + 0.08);
+                    
+                    gainNode.gain.setValueAtTime(0, now);
+                    gainNode.gain.linearRampToValueAtTime(velocity * 0.4, now + 0.008);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(pannerNode);
+                    osc.start(now);
+                    osc.stop(now + duration + 0.1);
+                } else if (trackId === 'bo') {
+                    // 鈸：金屬高頻沙沙噪音
+                    const bufferSize = this.ctx.sampleRate * 0.25;
+                    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = Math.random() * 2 - 1;
+                    }
+                    const noise = this.ctx.createBufferSource();
+                    noise.buffer = buffer;
+                    
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'highpass';
+                    filter.frequency.setValueAtTime(1800, now);
+                    
+                    const gainNode = this.ctx.createGain();
+                    gainNode.gain.setValueAtTime(0, now);
+                    gainNode.gain.linearRampToValueAtTime(velocity * 0.25, now + 0.006);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                    
+                    noise.connect(filter);
+                    filter.connect(gainNode);
+                    gainNode.connect(pannerNode);
+                    noise.start(now);
+                    noise.stop(now + duration + 0.1);
+                } else if (trackId === 'dingDang') {
+                    // 叮噹：清脆極高頻金屬小碰鈴
+                    const osc = this.ctx.createOscillator();
+                    const gainNode = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(1320, now);
+                    
+                    gainNode.gain.setValueAtTime(0, now);
+                    gainNode.gain.linearRampToValueAtTime(velocity * 0.3, now + 0.002);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(pannerNode);
+                    osc.start(now);
+                    osc.stop(now + duration + 0.1);
+                } else if (trackId === 'tanggu') {
+                    // 堂鼓：沉穩低沉鼓音
+                    const osc = this.ctx.createOscillator();
+                    const gainNode = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.exponentialRampToValueAtTime(50, now + 0.14);
+                    
+                    gainNode.gain.setValueAtTime(0, now);
+                    gainNode.gain.linearRampToValueAtTime(velocity * 0.85, now + 0.005);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(pannerNode);
+                    osc.start(now);
+                    osc.stop(now + duration + 0.1);
+                } else if (trackId === 'bangziLow' || trackId === 'bangziHigh') {
+                    // 梆子：實木敲擊感
+                    const osc = this.ctx.createOscillator();
+                    const gainNode = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(trackId === 'bangziHigh' ? 1100 : 700, now);
+                    
+                    gainNode.gain.setValueAtTime(0, now);
+                    gainNode.gain.linearRampToValueAtTime(velocity * 0.6, now + 0.002);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(pannerNode);
+                    osc.start(now);
+                    osc.stop(now + 0.12);
+                } else {
+                    // 旋律吹管與弦樂類：高透度嗩吶、直笛、椰胡模擬（加入顫音 LFO）
+                    const osc = this.ctx.createOscillator();
+                    const gainNode = this.ctx.createGain();
+                    
+                    const lfo = this.ctx.createOscillator();
+                    const lfoGain = this.ctx.createGain();
+                    lfo.frequency.setValueAtTime(6.2, now); // 傳統顫音頻率
+                    lfoGain.gain.setValueAtTime((freq || 220) * 0.015, now);
+                    
+                    lfo.connect(lfoGain);
+                    lfoGain.connect(osc.frequency);
+                    
+                    if (trackId.includes('suona')) {
+                        osc.type = 'sawtooth'; // 嗩吶明亮粗獷雙簧聲
+                        const filter = this.ctx.createBiquadFilter();
+                        filter.type = 'bandpass';
+                        filter.frequency.setValueAtTime(1300, now);
+                        filter.Q.setValueAtTime(1.0, now);
+                        osc.connect(filter);
+                        filter.connect(gainNode);
+                    } else if (trackId.includes('recorder')) {
+                        osc.type = 'triangle'; // 直笛平滑風鳴聲
+                        osc.connect(gainNode);
+                    } else { // 椰胡/胖胡傳統弦鳴
+                        osc.type = 'sawtooth';
+                        const filter = this.ctx.createBiquadFilter();
+                        filter.type = 'lowpass';
+                        filter.frequency.setValueAtTime(750, now);
+                        osc.connect(filter);
+                        filter.connect(gainNode);
+                    }
+                    
+                    osc.frequency.setValueAtTime(freq || 220, now);
+                    
+                    gainNode.gain.setValueAtTime(0, now);
+                    gainNode.gain.linearRampToValueAtTime(velocity * 0.22, now + 0.04);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                    
+                    gainNode.connect(pannerNode);
+                    
+                    lfo.start(now);
+                    osc.start(now);
+                    lfo.stop(now + duration + 0.15);
+                    osc.stop(now + duration + 0.15);
+                }
             }
         };
 
@@ -301,7 +449,7 @@
             if (AudioEngine.customBuffers[track.id] || (AudioEngine.customSlices[track.id] && Object.keys(AudioEngine.customSlices[track.id]).length > 0)) {
                 AudioEngine.playRealSample(track.id, freq, track.isMelodic, dur, track.pan, velocity, timeOffset);
             } else {
-                AudioEngine.playSynth('sine', freq, dur, track.pan, velocity, timeOffset);
+                AudioEngine.playSynth(track.id, freq, dur, track.pan, velocity, timeOffset); 
             }
         };
 
@@ -336,13 +484,80 @@
             [2, null, 3, 4, 2, null, 1, 2, 0, null, 1, 2, 2, null, 3, 4],
         ];
 
-        const INTRO_TABS = ['客家八音是什麼?', '樂器介紹'];
-        const INSTRUMENTS = [
-            { name: '嗩吶', desc: '客家八音最重要的主旋律樂器，聲音高亢明亮。', type: '吹管樂器', imageUrl: 'https://www.hakka-portal.ntpc.gov.tw/archive/article/8/normal/part_623_7055099_94710.jpg', audioUrl: 'https://kiddyhakka.github.io/M11475002/eight/嗩吶(低).m4a' },
-            { name: '二胡/胖胡', desc: '重要的擦弦樂器，負責和聲與輔助旋律。', type: '擦弦樂器', imageUrl: 'https://dcm.s3.hicloud.net.tw/new/collection/2025-09-12/43c7e3b2-9208-42a1-9398-7ac467762a6c/98ae977c-f197-4378-a97f-05ac67f10b48_f.jpg', audioUrl: 'https://kiddyhakka.github.io/M11475002/eight/胖胡.m4a' },
-            { name: '揚琴', desc: '擊弦樂器，音色清脆，常用於伴奏。', type: '擊弦樂器', imageUrl: 'https://collections.culture.tw/ShowGalImage.aspx?SYSUID=17&IMG=KQ5S5NMHM1MXM4KM5KM6MG0V06M6MGMNM4MBMPM4MP0V0BMYKMK5KHM5MJMDMQKAK4KJ5SK7MCMKM65A5SKLKA5SKEKY5MKL5TKJMWKXK8KP5UMS5O5TKQK4K2K6MD0EM2MB06ME0GM6MZ0RMWMF0GME&TEXT=K7KG575Y&FROM=5YKK57' },
-            { name: '打擊樂器組', desc: '包含堂鼓、小鈸、大鑼、小鑼等，掌控節奏與氣氛。', type: '打擊樂器', imageUrl: 'https://www.hakka.gov.tw/userfiles/image/%E5%A4%A7%E5%A4%A5%E6%88%BF%E8%97%9D%E8%A1%93%E5%9C%98.jpg' },
+        const INTRO_TABS = ['1.1 什麼是客家八音？', '1.2 樂器介紹'];
+        
+        const HAKKA_BAYIN_INTRO = [
+            {
+                id: 'definition',
+                title: '八音是指什麼？',
+                content: '「八音」一詞最早源於中國古代《周禮·春官》，是以樂器本體的製作材料分類，即：<strong>金、石、絲、竹、匏、土、革、木</strong>八大材質。在臺灣，「客家八音」則是客家傳統器樂演奏的核心代稱，指涉以這八類材質所融合發展出來的吹打、弦歌大成。'
+            },
+            {
+                id: 'liudui',
+                title: '六堆八音的特色',
+                content: '高屏地區的「六堆八音」具有極強的地域色彩。其音樂體系在吸收了客家山歌、歌子戲與北管牌子後，發展出吹打並重、弦律悠揚且情感豐沛的特點。在六堆的婚喪喜慶或廟會活動中，八音演奏不僅是氣氛擔當，更是社會凝聚力的核心聲音媒介。'
+            },
+            {
+                id: 'grandparents',
+                title: '敬外祖的特色',
+                content: '「敬外祖」是六堆客家祭典與儀禮中極其獨特、隆重的儀式。當舅舅（外祖家代表）蒞臨主祭壇時，八音團會吹奏起專屬莊嚴尊貴、沉穩緩慢的「敬外祖」曲牌，以樂申謝。這體現了客家文化中尊崇母系、對母舅家致上最崇高敬意的慎終追遠美德。'
+            },
+            {
+                id: 'dahuofang',
+                title: '大夥房藝術團',
+                content: '<strong>大夥房創團的歷史：</strong>大夥房藝術團由熱愛客家傳統吹打音樂與樂器演奏的在地師生與文史工作者共同創立，多年來深入校園、社區，專職於客家八音的傳承、記錄、傳習，是中南部保存傳播客家無形文化資產的主幹力量。<br/><br/><strong>大夥房團名怎麼來 (一家人)：</strong>「夥房」是客家傳統合院聚落住宅，象徵同血緣宗族共居。團名取「大夥房」，寓意所有團員聚在一起練習、演奏，就如同住在同一個夥房下、彼此關懷照應的「一家人」，將這份溫馨與團結化作無與倫比的和諧音樂。'
+            }
         ];
+
+        const INSTRUMENTS = [
+            { 
+                name: '椰胡 (殼仔絃)', 
+                desc: '琴筒以椰子殼製成，音色溫潤圓滑且帶點鼻音。它是傳統客家八音弦樂伴奏的主幹之一。', 
+                type: '絲', 
+                imageUrl: 'https://kiddyhakka.github.io/M11475002/eight/椰胡與胖胡.jpg', 
+                audioUrl: 'https://kiddyhakka.github.io/M11475002/eight/椰胡_殼仔絃_樂器試聽.mp3' 
+            },
+            { 
+                name: '胖胡 (大廣絃)', 
+                desc: '常用林投樹根、椰殼或廣東葫蘆製成，因低音渾厚胖厚，常俗稱為胖胡（或大廣絃）。它負責拉奏渾厚的重低音和聲，為嗩吶提供極為穩定的基底。', 
+                type: '絲', 
+                imageUrl: 'https://kiddyhakka.github.io/M11475002/eight/椰胡與胖胡.jpg', 
+                audioUrl: 'https://kiddyhakka.github.io/M11475002/eight/胖胡_大廣絃_樂器試聽.mp3' 
+            },
+            { 
+                name: '嗩吶', 
+                desc: '客家八音中最重要的主旋律樂器。發音高亢、明亮穿透，是整個吹打編制裡的「靈魂樂器」。', 
+                type: '竹/匏', 
+                imageUrl: 'https://kiddyhakka.github.io/M11475002/eight/嗩吶_噠仔.jpg', 
+                audioUrl: 'https://kiddyhakka.github.io/M11475002/eight/嗩吶樂器試聽.mp3' 
+            },
+            { 
+                name: '鑼鼓組', 
+                desc: '包含大鑼、小鑼、鈸、堂鼓等。鑼鼓掌控整場音樂的節奏快慢、動態與強弱變化，是熱鬧氣氛的源頭。', 
+                type: '金/革', 
+                imageUrls: [
+                    'https://kiddyhakka.github.io/M11475002/eight/大鑼.jpg',
+                    'https://kiddyhakka.github.io/M11475002/eight/小鑼.jpg',
+                    'https://kiddyhakka.github.io/M11475002/eight/小鈸.jpg'
+                ],
+                audioUrl: 'https://kiddyhakka.github.io/M11475002/eight/大鑼小鑼小鈸試聽.mp3' 
+            },
+            { 
+                name: '高低梆子', 
+                desc: '打擊樂器，音調脆亮，用於點拍、掌控節奏的穩健骨幹。敲擊發出極具辨識度的實木聲音。', 
+                type: '木', 
+                imageUrl: 'https://kiddyhakka.github.io/M11475002/eight/高低梆子.jpg', 
+                audioUrl: 'https://kiddyhakka.github.io/M11475002/eight/噹叮高低梆子堂鼓樂器試聽.mp3' 
+            },
+            { 
+                name: '直笛', 
+                desc: '在現代推廣及傳習中，直笛因其吹口簡單，常用作吹管樂器旋律學習的輔助工具，使學生能更輕鬆快速地上手合奏。', 
+                type: '竹/吹管', 
+                imageUrl: 'https://kiddyhakka.github.io/M11475002/eight/直笛.jpg', 
+                audioUrl: 'https://kiddyhakka.github.io/M11475002/eight/直笛樂器試聽.mp3' 
+            }
+        ];
+
         const VIDEOS = [
             { title: '《HakkaTV電視音樂專輯》天地之樂--打八音', source: 'YouTube', url: 'https://www.youtube.com/watch?v=JJj0j4jpwg4', videoId: 'JJj0j4jpwg4', si: '7vzX0NpOC6lQsbFq' },
             { title: '八音入秋 聲韻傳承｜六堆地區｜《風神舞台》', source: 'YouTube', url: 'https://www.youtube.com/watch?v=knUCcy4_yrw&t=4204s', videoId: 'knUCcy4_yrw' },
@@ -351,19 +566,32 @@
             { title: '《八音迎新春》EP24：大夥房藝術團', source: 'YouTube', url: 'https://www.youtube.com/watch?v=4zDmGd9lWdY&t=1328s', videoId: '4zDmGd9lWdY' },
             { title: '《八音迎新春》 EP45：美濃客家八音團', source: 'YouTube', url: 'https://www.youtube.com/watch?v=f86BSn2MENI', videoId: 'f86BSn2MENI' },
         ];
+
+        // ==========================================
+        // 知識測驗完整題庫
+        // ==========================================
         const QUIZ_QUESTIONS = [
             { question: '請問客家八音中，哪一個樂器通常負責擔任「主旋律」的靈魂角色？', options: ['二胡', '嗩吶', '揚琴', '堂鼓'], answer: 1 },
             { question: '傳統的「八音」分類，是依據什麼來劃分的？', options: ['製作材料 (金、石、絲、竹等)', '演奏人數', '樂曲長度', '發源地區'], answer: 0 },
-            { question: '下列何者「不是」常見的客家八音打擊樂器？', options: ['小鈸', '大鑼', '定音鼓', '堂鼓'], answer: 2 }
+            { question: '下列何者「不是」常見的客家八音打擊樂器？', options: ['小鈸', '大鑼', '定音鼓', '堂鼓'], answer: 2 },
+            { question: '「大夥房藝術團」團名的由來是什麼？', options: ['因為所有團員都住在同一個大夥房飯店裡', '「夥房」是客家傳統合院住宅，象徵同血緣宗族共居，寓意大家聚在一起如「一家人」般彼此關懷', '團員是一起在廚房做菜的大火房夥伴', '因為創辦人叫做大夥房先生'], answer: 1 },
+            { question: '客家八音通常在哪些場合最常聽得到？', options: ['廟會慶典、歲時節令、婚喪喜慶', '電子音樂祭、現代夜店派對', '百貨公司週年慶促銷拍賣會', '圖書館安靜自修室'], answer: 0 },
+            { question: '在傳統客家八音中，哪一個學校設有著名的「八音社團」並曾錄製過《八音迎新春》節目？', options: ['大夥房國中', '新北國中', '美濃國中', '佳冬國中'], answer: 2 },
+            { question: '客家八音中極具特色的「椰胡（殼仔絃）」，其琴筒為什麼會用椰子殼來製作？', options: ['因為椰子殼硬度極高，敲打起來最響亮', '因為演奏完可以直接把琴筒打開喝椰子汁', '因為南部椰子取材方便，且椰殼共鳴能產生溫潤、圓滑帶有鼻音的獨特音色', '為了配合夏威夷風情，讓舞台效果更好看'], answer: 2 },
+            { question: '下列哪一個場合，最少會看到或聽到客家八音的現場演奏？', options: ['跨年倒數晚會', '義民爺祭典', '傳統婚禮迎娶', '神明聖誕廟會'], answer: 0 },
+            { question: '【是非題】客家八音中，以嗩吶與打擊樂為主、聲音宏亮熱鬧、常用於廟會出陣的演奏形式稱為「絃索樂」。', options: ['是 (Ｏ)', '否 (Ｘ)'], answer: 1 }
         ];
 
+        // ==========================================
+        // 精緻補充：成績評分百分比連動函數
+        // ==========================================
         const getScoreTitle = (score, total) => {
             const percentage = score / total;
-            if (percentage === 1) return { title: '八音大神', msg: '太神啦！你對客家八音瞭若指掌！' };
-            if (percentage >= 0.8) return { title: '八音名家', msg: '非常厲害！具備深厚的八音知識！' };
-            if (percentage >= 0.6) return { title: '八音高手', msg: '表現不錯喔！繼續保持！' };
-            if (percentage >= 0.3) return { title: '八音好手', msg: '有點基礎，再多聽多看會更棒！' };
-            return { title: '八音新手', msg: '沒關係，從現在開始認識客家八音吧！' };
+            if (percentage === 1) return { title: '八音大神', msg: '太神啦！你對客家八音與吹打藝術瞭若指掌！' };
+            if (percentage >= 0.8) return { title: '八音名家', msg: '非常厲害！具備深厚扎實的八音知識！' };
+            if (percentage >= 0.6) return { title: '八音高手', msg: '表現不錯喔！繼續保持，你已經快跨入大師殿堂了！' };
+            if (percentage >= 0.3) return { title: '八音好手', msg: '很有潛力！再多聽、多看看本APP的內容會更棒！' };
+            return { title: '八音新手', msg: '沒關係，從現在開始，跟著我們一起好好認識客家八音吧！' };
         };
 
         // ==========================================
@@ -374,7 +602,7 @@
             intro: { activeTab: 0 },
             appreciation: { playingVideo: null },
             game: { subView: 'menu' },
-            quiz: { currentQ: 0, score: 0, showResult: false, selectedOption: null },
+            quiz: { currentQ: 0, score: 0, showResult: false, selectedOption: null, questions: [] },
             puzzle: {
                 isPlaying: false,
                 bpm: 105,
@@ -390,6 +618,16 @@
                 currentStepRef: 0
             }
         };
+
+        // 陣列隨機打亂函數 (Fisher-Yates Shuffle)
+        function shuffleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
 
         // ==========================================
         // 3. 核心渲染機制
@@ -434,8 +672,12 @@
             }
         };
 
+        // 全域音樂試聽音量管理
+        let previewAudioInstance = null;
+
         window.navigate = (view) => {
             stopPuzzlePlayback();
+            stopPreviewAudio(); 
             state.currentView = view;
             if(view === 'game') state.game.subView = 'menu';
             renderApp();
@@ -446,7 +688,7 @@
             const menus = [
                 { id: 'intro', title: '客家八音暨樂器介紹', icon: 'info', color: 'bg-blue-500', desc: '認識傳統與樂器' },
                 { id: 'appreciation', title: '客家八音欣賞', icon: 'play-square', color: 'bg-emerald-600', desc: '影音與音樂饗宴' },
-                { id: 'game', title: '我是八音達人', icon: 'trophy', color: 'bg-amber-500', desc: '創作與測驗挑戰' },
+                { id: 'game', title: '創作與測驗挑戰', icon: 'trophy', color: 'bg-amber-500', desc: '音樂拼貼與知識測驗' },
             ];
 
             let menuHtml = menus.map((menu, idx) => `
@@ -468,7 +710,7 @@
                         <div class="w-24 h-24 bg-amber-200 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner border-4 border-amber-300">
                             <i data-lucide="music" style="width: 48px; height: 48px;" class="text-amber-700"></i>
                         </div>
-                        <h2 class="text-2xl font-black text-amber-900 tracking-wide mb-1">客家音樂世界</h2>
+                        <h2 class="text-2xl font-black text-amber-900 tracking-wide mb-1">客家音樂 world</h2>
                         <p class="text-sm text-stone-600 font-medium">請選擇下方單元開始探索</p>
                     </div>
                     <div class="w-full flex flex-col gap-4">
@@ -480,18 +722,57 @@
 
         // --- 樂器介紹 ---
         window.switchIntroTab = (idx) => {
+            stopPreviewAudio(); 
             state.intro.activeTab = idx;
             renderApp();
         };
 
-        window.playPreviewAudio = (url) => {
-            const audio = new Audio(url);
-            audio.play().catch(e => console.error("播放失敗:", e));
+        // 停止目前的音樂預聽
+        window.stopPreviewAudio = () => {
+            if (previewAudioInstance) {
+                previewAudioInstance.pause();
+                previewAudioInstance = null;
+                document.querySelectorAll('.play-btn-text').forEach(btn => {
+                    btn.innerHTML = `<i data-lucide="volume-2" style="width: 14px; height: 14px;"></i> 試聽聲音`;
+                });
+                lucide.createIcons();
+            }
+        };
+
+        window.playPreviewAudio = (url, btnId) => {
+            AudioEngine.init();
+            
+            if (previewAudioInstance && previewAudioInstance.src === url && !previewAudioInstance.paused) {
+                stopPreviewAudio();
+                return;
+            }
+
+            stopPreviewAudio(); 
+
+            const targetBtn = document.getElementById(btnId);
+            if (targetBtn) {
+                targetBtn.innerHTML = `<span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 border-2 border-blue-700 border-t-transparent rounded-full animate-spin"></span> 播放中 (點擊暫停)</span>`;
+            }
+
+            previewAudioInstance = new Audio(url);
+            previewAudioInstance.loop = false; 
+
+            previewAudioInstance.play().catch(e => {
+                console.error("試聽播放失敗:", e);
+                if (targetBtn) {
+                    targetBtn.innerHTML = `<i data-lucide="volume-x" style="width: 14px; height: 14px;"></i> 播放失敗`;
+                    lucide.createIcons();
+                }
+            });
+
+            previewAudioInstance.onended = () => {
+                stopPreviewAudio();
+            };
         };
 
         function renderIntroView() {
             const tabsHtml = INTRO_TABS.map((tab, idx) => `
-                <button onclick="switchIntroTab(${idx})" class="flex-1 py-3 text-sm font-bold transition-all relative ${state.intro.activeTab === idx ? 'text-amber-700 bg-amber-50/50' : 'text-stone-500 hover:bg-stone-50'}">
+                <button onclick="switchIntroTab(${idx})" class="flex-1 py-3 text-xs md:text-sm font-bold transition-all relative ${state.intro.activeTab === idx ? 'text-amber-700 bg-amber-50/50' : 'text-stone-500 hover:bg-stone-50'}">
                     ${tab}
                     ${state.intro.activeTab === idx ? '<div class="absolute bottom-0 left-0 w-full h-1 bg-amber-600 rounded-t-full"></div>' : ''}
                 </button>
@@ -500,22 +781,25 @@
             let contentHtml = '';
             if (state.intro.activeTab === 0) {
                 contentHtml = `
-                    <div class="space-y-4 animate-in fade-in">
-                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-stone-100">
-                            <h3 class="text-lg font-bold text-amber-900 mb-3 flex items-center gap-2 border-b border-amber-100 pb-2">
-                                <i data-lucide="help-circle" class="text-amber-600" style="width: 20px; height: 20px;"></i> 什麼是客家八音？
-                            </h3>
-                            <p class="text-sm leading-relaxed text-stone-700">
-                                「客家八音」是客家傳統器樂演奏的代表，過去多在歲時節令、廟會慶典及婚喪喜慶等場合演出，充滿熱鬧歡騰的「鬧」氣氛。<br/><br/>
-                                名稱中的「八音」源自古代樂器製作材料的分類（金、石、絲、竹、匏、土、革、木）。資料來源參考了吳榮順老師的《台灣客家八音的傳統與傳習》。
-                            </p>
-                            <div class="mt-5 bg-amber-50 rounded-xl p-5 flex flex-col items-center justify-center border-2 border-dashed border-amber-300 text-amber-800 gap-3">
-                                <span class="font-bold text-base">歷史圖片展區</span>
-                                <p class="text-xs text-stone-600 text-center">想看更多珍貴歷史與照片嗎？</p>
-                                <a href="https://www.google.com/search?q=新北市客家文化典藏資料庫" target="_blank" rel="noreferrer" class="bg-amber-600 text-white px-5 py-2.5 rounded-full text-xs font-bold hover:bg-amber-700 transition-colors flex items-center gap-1.5 shadow-md active:scale-95">
-                                    <i data-lucide="external-link" style="width: 14px; height: 14px;"></i> 至典藏資料庫查找
-                                </a>
+                    <div class="space-y-4 animate-in fade-in pb-6">
+                        ${HAKKA_BAYIN_INTRO.map((section, idx) => `
+                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-stone-200/80">
+                                <h3 class="text-base font-bold text-amber-900 mb-2.5 flex items-center gap-2 border-b border-amber-50 pb-2">
+                                    <span class="inline-flex w-2.5 h-2.5 rounded-full bg-amber-600"></span>
+                                    ${section.title}
+                                </h3>
+                                <p class="text-xs md:text-sm leading-relaxed text-stone-600">
+                                    ${section.content}
+                                </p>
                             </div>
+                        `).join('')}
+
+                        <div class="bg-amber-50 rounded-xl p-5 flex flex-col items-center justify-center border border-dashed border-amber-300 text-amber-800 gap-3">
+                            <span class="font-bold text-sm flex items-center gap-1.5"><i data-lucide="archive" style="width: 16px; height: 16px;"></i> 歷史圖片展區</span>
+                            <p class="text-xs text-stone-600 text-center">想觀看更多新北市政府所典藏的傳統客家文物嗎？</p>
+                            <a href="https://www.google.com/search?q=新北市客家文化典藏資料庫" target="_blank" rel="noreferrer" class="bg-amber-600 text-white px-5 py-2.5 rounded-full text-xs font-bold hover:bg-amber-700 transition-colors flex items-center gap-1.5 shadow-md active:scale-95">
+                                <i data-lucide="external-link" style="width: 14px; height: 14px;"></i> 至典藏資料庫查找
+                            </a>
                         </div>
                     </div>
                 `;
@@ -523,27 +807,41 @@
                 contentHtml = `
                     <div class="space-y-4 animate-in fade-in pb-4">
                         ${INSTRUMENTS.map((inst, idx) => {
-                            const imgHtml = inst.imageUrl ? `
-                                <img src="${inst.imageUrl}" alt="${inst.name}" class="absolute inset-0 w-full h-full object-cover z-0" />
-                                <div class="absolute inset-0 bg-white/85 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity z-10 flex flex-col items-center justify-center backdrop-blur-sm">
-                                    <div class="text-[10px] font-black text-amber-800 mb-0.5">至資料庫查找</div>
-                                    <i data-lucide="external-link" class="text-amber-600" style="width: 14px; height: 14px;"></i>
-                                </div>
-                            ` : `
-                                <div class="text-xs font-bold text-stone-500 mb-1">${inst.name}圖片</div>
-                                <div class="text-[10px] text-stone-400 leading-tight">點擊查找</div>
-                                <i data-lucide="external-link" class="text-stone-300 mt-1" style="width: 12px; height: 12px;"></i>
-                            `;
+                            const btnId = `inst-btn-${idx}`;
+                            const isMultipleImages = Array.isArray(inst.imageUrls);
+                            
+                            let imgContainerInnerHtml = '';
+                            if (isMultipleImages) {
+                                imgContainerInnerHtml = `
+                                    <div class="absolute inset-0 grid grid-cols-3 h-full w-full gap-0.5 bg-stone-100 z-0">
+                                        ${inst.imageUrls.map(url => `
+                                            <img src="${url}" alt="${inst.name}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/80x80/78350f/ffffff?text=八音'" />
+                                        `).join('')}
+                                    </div>
+                                    <div class="absolute inset-0 bg-white/85 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity z-10 flex flex-col items-center justify-center backdrop-blur-sm">
+                                        <div class="text-[9px] font-black text-amber-800 mb-0.5">點選查找</div>
+                                        <i data-lucide="external-link" class="text-amber-600" style="width: 12px; height: 12px;"></i>
+                                    </div>
+                                `;
+                            } else {
+                                imgContainerInnerHtml = `
+                                    <img src="${inst.imageUrl}" alt="${inst.name}" class="absolute inset-0 w-full h-full object-cover z-0" onerror="this.src='https://placehold.co/120x120/78350f/ffffff?text=${inst.name}'" />
+                                    <div class="absolute inset-0 bg-white/85 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity z-10 flex flex-col items-center justify-center backdrop-blur-sm">
+                                        <div class="text-[10px] font-black text-amber-800 mb-0.5">點選查找</div>
+                                        <i data-lucide="external-link" class="text-amber-600" style="width: 14px; height: 14px;"></i>
+                                    </div>
+                                `;
+                            }
 
                             return `
                             <div class="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex flex-col gap-3">
                                 <div class="flex gap-4">
                                     <a href="https://www.google.com/search?q=新北市客家文化典藏資料庫+${inst.name}" target="_blank" rel="noreferrer" class="w-24 h-24 bg-stone-50 rounded-xl shrink-0 flex flex-col items-center justify-center relative overflow-hidden border border-stone-200 group cursor-pointer text-center">
-                                        ${imgHtml}
+                                        ${imgContainerInnerHtml}
                                     </a>
                                     <div class="flex-1 flex flex-col justify-center">
                                         <div class="flex justify-between items-start mb-1">
-                                            <h4 class="text-lg font-bold text-amber-900">${inst.name}</h4>
+                                            <h4 class="text-base font-bold text-amber-900">${inst.name}</h4>
                                         </div>
                                         <div class="mb-2">
                                             <span class="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">${inst.type}</span>
@@ -553,7 +851,7 @@
                                 </div>
                                 ${inst.audioUrl ? `
                                 <div class="pt-2 border-t border-stone-100 mt-1">
-                                    <button onclick="playPreviewAudio('${inst.audioUrl}')" class="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 py-2 rounded-lg hover:bg-blue-100 active:bg-blue-200 transition-colors">
+                                    <button id="${btnId}" onclick="playPreviewAudio('${inst.audioUrl}', '${btnId}')" class="play-btn-text w-full flex items-center justify-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 py-2 rounded-lg hover:bg-blue-100 active:bg-blue-200 transition-colors">
                                         <i data-lucide="volume-2" style="width: 14px; height: 14px;"></i> 試聽聲音
                                     </button>
                                 </div>` : ''}
@@ -664,7 +962,14 @@
             stopPuzzlePlayback();
             state.game.subView = view;
             if (view === 'quiz') {
-                state.quiz = { currentQ: 0, score: 0, showResult: false, selectedOption: null };
+                // 初始化並將 9 道題進行隨機打亂，確保每次玩都是新體驗
+                state.quiz = { 
+                    currentQ: 0, 
+                    score: 0, 
+                    showResult: false, 
+                    selectedOption: null,
+                    questions: shuffleArray(QUIZ_QUESTIONS) 
+                };
             } else if (view === 'puzzle') {
                 if (!state.puzzle.isCloudLoaded && !state.puzzle.isProcessing) {
                     setTimeout(() => window.puzzleLoadCloudAudios(), 100);
@@ -676,13 +981,18 @@
         window.answerQuiz = (idx) => {
             if (state.quiz.selectedOption !== null) return;
             state.quiz.selectedOption = idx;
-            if (idx === QUIZ_QUESTIONS[state.quiz.currentQ].answer) {
+            
+            const currentQObject = state.quiz.questions[state.quiz.currentQ];
+            if (idx === currentQObject.answer) {
                 state.quiz.score++;
+                AudioEngine.playSynth('dingDang', 1200, 0.4, 0, 0.8, 0);
+            } else {
+                AudioEngine.playSynth('tanggu', 80, 0.5, 0, 1.0, 0);
             }
             renderApp();
 
             setTimeout(() => {
-                if (state.quiz.currentQ < QUIZ_QUESTIONS.length - 1) {
+                if (state.quiz.currentQ < state.quiz.questions.length - 1) {
                     state.quiz.currentQ++;
                     state.quiz.selectedOption = null;
                 } else {
@@ -868,6 +1178,75 @@
             } else track.play(null, 1.0, 1.0, 0);
         };
 
+        window.uploadTrackSample = async (trackId, input) => {
+            if (!input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            const track = TRACKS.find(t => t.id === trackId);
+            if (!track) return;
+            
+            state.puzzle.isProcessing = true;
+            renderApp();
+            try {
+                const result = await AudioEngine.loadSmartSample(trackId, file, track.isMelodic);
+                state.puzzle.uploadedFiles[trackId] = { name: file.name, notes: result.extracted };
+                showNotice("上傳成功", `已載入「${track.name}」自訂音訊！`);
+            } catch (e) {
+                console.error(e);
+                showNotice("上傳失敗", "解碼音訊失敗，請更換音檔格式重試。");
+            } finally {
+                state.puzzle.isProcessing = false;
+                renderApp();
+            }
+        };
+
+        window.saveGridToSlot = (slot) => {
+            try {
+                localStorage.setItem(`hakka_eight_grid_slot_${slot}`, JSON.stringify(state.puzzle.grid));
+                showNotice("儲存成功", `已成功儲存至「進度存檔槽 ${slot}」！`);
+            } catch (e) {
+                console.error(e);
+                showNotice("儲存失敗", "寫入本地快取出錯。");
+            }
+        };
+
+        window.loadGridFromSlot = (slot) => {
+            try {
+                const data = localStorage.getItem(`hakka_eight_grid_slot_${slot}`);
+                if (data) {
+                    state.puzzle.grid = JSON.parse(data);
+                    renderApp();
+                    showNotice("讀取成功", `已成功載入「存檔槽 ${slot}」的合奏！`);
+                } else {
+                    showNotice("無資料", `「存檔槽 ${slot}」尚無儲存進度。`);
+                }
+            } catch (e) {
+                console.error(e);
+                showNotice("讀取失敗", "資料格式不符。");
+            }
+        };
+
+        window.showNotice = (title, message) => {
+            let container = document.getElementById('notice-container');
+            if (!container) {
+                const layout = document.querySelector('main');
+                if (layout) {
+                    container = document.createElement('div');
+                    container.id = 'notice-container';
+                    container.className = 'absolute top-4 left-1/2 -translate-x-1/2 bg-stone-900/90 text-amber-100 text-[11px] font-bold px-4 py-2.5 rounded-full shadow-lg z-50 transition-all transform scale-95 opacity-0 pointer-events-none w-max max-w-[80%] text-center';
+                    layout.appendChild(container);
+                }
+            }
+            if (container) {
+                container.innerHTML = `<strong>${title}:</strong> ${message}`;
+                container.classList.remove('opacity-0', 'scale-95');
+                container.classList.add('opacity-100', 'scale-100');
+                setTimeout(() => {
+                    container.classList.remove('opacity-100', 'scale-100');
+                    container.classList.add('opacity-0', 'scale-95');
+                }, 2800);
+            }
+        };
+
         function renderPuzzleView() {
             const toolsHtml = PENTATONIC_SCALE.map((pitch, index) => `
                 <button onclick="puzzleSetTool(${index})" class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${state.puzzle.selectedTool === index ? 'bg-blue-600 text-white shadow-md transform scale-105' : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100'}">
@@ -879,10 +1258,16 @@
                 const hasCustomSample = !!state.puzzle.uploadedFiles[track.id];
                 const padClass = hasCustomSample ? 'bg-emerald-600 hover:bg-emerald-500 ring-2 ring-emerald-300 ring-offset-1 shadow-emerald-200/50' : `${track.color} hover:${track.activeColor}`;
                 return `
-                <button onclick="puzzlePreviewTrack('${track.id}')" class="${padClass} text-white py-2.5 rounded-xl shadow-md transition-all active:scale-95 flex flex-col items-center justify-center gap-1 relative overflow-hidden">
-                    <span class="text-xs font-bold z-10">${track.name}</span>
-                    ${hasCustomSample ? '<i data-lucide="check-circle" style="width: 12px; height: 12px;" class="text-emerald-200 z-10"></i>' : ''}
-                </button>`;
+                <div class="relative group">
+                    <button onclick="puzzlePreviewTrack('${track.id}')" class="w-full ${padClass} text-white py-2.5 rounded-xl shadow-md transition-all active:scale-95 flex flex-col items-center justify-center gap-1 min-h-[58px]">
+                        <span class="text-xs font-bold z-10">${track.name}</span>
+                        ${hasCustomSample ? '<span class="text-[9px] font-bold opacity-90">已錄入</span>' : '<span class="text-[9px] opacity-75">點擊敲響</span>'}
+                    </button>
+                    <label class="absolute -top-1 -right-1 bg-white text-stone-700 hover:text-amber-700 w-5 h-5 rounded-full flex items-center justify-center border border-stone-200 shadow-sm cursor-pointer hover:bg-amber-100 z-10">
+                        <input type="file" accept="audio/*" onchange="uploadTrackSample('${track.id}', this)" class="hidden" />
+                        <i data-lucide="upload" style="width: 10px; height: 10px;"></i>
+                    </label>
+                </div>`;
             }).join('');
 
             const gridHtml = TRACKS.map((track, trackIndex) => {
@@ -915,12 +1300,28 @@
                 </div>`;
             }).join('');
 
+            let loadStatusBanner = '';
+            if (state.puzzle.isProcessing) {
+                loadStatusBanner = `
+                <div class="bg-amber-100 border border-amber-200 text-amber-900 text-xs px-3 py-2 rounded-xl flex items-center gap-2 animate-pulse mb-3">
+                    <div class="w-3.5 h-3.5 border-2 border-amber-700 border-t-transparent rounded-full animate-spin"></div>
+                    <span>大夥房雲端原音加載/解碼中，完成前使用高擬真物理合成聲...</span>
+                </div>`;
+            } else if (state.puzzle.isCloudLoaded) {
+                loadStatusBanner = `
+                <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 mb-3">
+                    <i data-lucide="check" style="width: 14px; height: 14px;" class="text-emerald-600"></i>
+                    <span>大夥房原聲預載已就緒！點擊右上角 <i data-lucide="upload" style="width: 11px; height: 11px; display: inline-block;"></i> 可上傳自製錄音。</span>
+                </div>`;
+            }
+
             return `
                 <div class="flex flex-col h-full w-full bg-stone-100 absolute inset-0 z-30 animate-in slide-in-from-right-4 overflow-y-auto overflow-x-hidden">
-                    <div class="p-4 space-y-6 max-w-full pb-20">
+                    <div class="p-4 space-y-6 max-w-full pb-24">
+                        ${loadStatusBanner}
                         <section>
                             <h3 class="text-sm font-bold text-stone-700 flex items-center gap-1.5 mb-3">
-                                <i data-lucide="volume-2" class="text-stone-500" style="width: 16px; height: 16px;"></i> 1. 樂器聲相預覽 (請稍待載入完成，按鈕呈綠色)
+                                <i data-lucide="volume-2" class="text-stone-500" style="width: 16px; height: 16px;"></i> 1. 樂器打擊樂坊 (點按敲響，右上角可上傳錄音)
                             </h3>
                             <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">
                                 ${padsHtml}
@@ -982,6 +1383,24 @@
                                     </label>
                                     <input type="range" min="0" max="1" step="0.05" value="${state.puzzle.reverbLevel}" oninput="puzzleSetReverb(this.value)" class="flex-1 h-2 bg-stone-700 rounded-lg appearance-none cursor-pointer accent-blue-500" />
                                 </div>
+
+                                <!-- 課堂進度存檔區 -->
+                                <div class="mt-4 pt-3 border-t border-stone-800">
+                                    <h4 class="text-[11px] font-bold text-stone-400 mb-2 flex items-center gap-1">
+                                        <i data-lucide="bookmark" style="width: 13px; height: 13px;"></i> 課堂合奏進度存檔槽
+                                    </h4>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        ${[1, 2, 3].map(slot => `
+                                            <div class="bg-stone-950 p-1.5 rounded-lg border border-stone-800 text-center flex flex-col gap-1">
+                                                <span class="text-[10px] text-stone-500">存檔 ${slot}</span>
+                                                <div class="flex gap-1 justify-center">
+                                                    <button onclick="saveGridToSlot(${slot})" class="bg-amber-700 hover:bg-amber-600 text-[10px] text-white py-0.5 px-1.5 rounded">儲存</button>
+                                                    <button onclick="loadGridFromSlot(${slot})" class="bg-stone-800 hover:bg-stone-700 text-[10px] text-stone-300 py-0.5 px-1.5 rounded">載入</button>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
                             </div>
                         </section>
                     </div>
@@ -993,7 +1412,7 @@
             if (state.game.subView === 'puzzle') return renderPuzzleView();
             if (state.game.subView === 'quiz') {
                 if (state.quiz.showResult) {
-                    const result = getScoreTitle(state.quiz.score, QUIZ_QUESTIONS.length);
+                    const result = getScoreTitle(state.quiz.score, state.quiz.questions.length);
                     return `
                         <div class="p-6 h-full flex flex-col items-center justify-center animate-in zoom-in w-full">
                             <div class="bg-amber-100 w-24 h-24 rounded-full flex items-center justify-center mb-4 shadow-inner border-4 border-amber-200">
@@ -1003,17 +1422,17 @@
                             <p class="text-sm text-stone-600 text-center mb-8">${result.msg}</p>
                             <div class="bg-white px-8 py-6 rounded-2xl shadow-sm border border-stone-200 mb-8 w-full text-center">
                                 <p class="text-sm text-stone-500 font-bold mb-1">最終測驗得分</p>
-                                <p class="text-5xl font-black text-amber-600">${state.quiz.score} <span class="text-2xl text-stone-400">/ ${QUIZ_QUESTIONS.length}</span></p>
+                                <p class="text-5xl font-black text-amber-600">${state.quiz.score} <span class="text-2xl text-stone-400">/ ${state.quiz.questions.length}</span></p>
                             </div>
                             <div class="flex flex-col gap-3 w-full">
-                                <button onclick="switchGameView('quiz')" class="w-full bg-amber-600 text-white py-3.5 rounded-xl text-sm font-bold hover:bg-amber-700 active:scale-[0.98] transition-all shadow-md">再玩一次</button>
+                                <button onclick="switchGameView('quiz')" class="w-full bg-amber-600 text-white py-3.5 rounded-xl text-sm font-bold hover:bg-amber-700 active:scale-[0.98] transition-all shadow-md">再玩一次 (重新打亂題目)</button>
                                 <button onclick="switchGameView('menu')" class="w-full bg-stone-200 text-stone-800 py-3.5 rounded-xl text-sm font-bold hover:bg-stone-300 active:scale-[0.98] transition-all">回遊戲選單</button>
                             </div>
                         </div>
                     `;
                 }
 
-                const question = QUIZ_QUESTIONS[state.quiz.currentQ];
+                const question = state.quiz.questions[state.quiz.currentQ];
                 const optionsHtml = question.options.map((opt, idx) => {
                     let btnClass = "w-full text-left p-4 rounded-xl border-2 transition-all font-bold text-sm text-stone-700 shadow-sm flex items-center ";
                     if (state.quiz.selectedOption === null) {
@@ -1025,7 +1444,7 @@
                     }
                     return `
                         <button onclick="answerQuiz(${idx})" ${state.quiz.selectedOption !== null ? 'disabled' : ''} class="${btnClass}">
-                            <span class="inline-block w-6 h-6 bg-stone-100 rounded-full text-center leading-6 mr-3 text-xs border border-stone-200 shrink-0">
+                            <span class="inline-block w-6 h-6 bg-stone-100 rounded-full text-center leading-6 mr-3 text-xs border border-stone-200 shrink-0 font-mono">
                                 ${String.fromCharCode(65 + idx)}
                             </span>
                             <span class="flex-1">${opt}</span>
@@ -1039,8 +1458,8 @@
                             <button onclick="switchGameView('menu')" class="flex items-center gap-1 text-stone-500 hover:text-stone-800 font-bold bg-stone-100 px-3 py-1.5 rounded-lg text-sm">
                                 <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i> 返回
                             </button>
-                            <span class="text-xs font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-full border border-amber-200">
-                                問題 ${state.quiz.currentQ + 1} / ${QUIZ_QUESTIONS.length}
+                            <span class="text-xs font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-full border border-amber-200 font-mono">
+                                問題 ${state.quiz.currentQ + 1} / ${state.quiz.questions.length}
                             </span>
                         </div>
                         <div class="flex-1 flex flex-col w-full">
@@ -1058,7 +1477,7 @@
             return `
                 <div class="p-5 flex flex-col h-full w-full">
                     <div class="text-center mb-6 mt-4">
-                        <h3 class="font-black text-xl text-amber-900 mb-1">我是八音達人</h3>
+                        <h3 class="font-black text-xl text-amber-900 mb-1">創作與測驗挑戰</h3>
                         <p class="text-xs text-stone-500 font-medium">請選擇您想挑戰的遊戲項目：</p>
                     </div>
                     <div class="flex flex-col gap-4">
