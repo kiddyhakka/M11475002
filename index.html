@@ -578,7 +578,7 @@
             { question: '客家八音通常在哪些場合最常聽得到？', options: ['廟會慶典、歲時節令、婚喪喜慶', '電子音樂祭、現代夜店派對', '百貨公司週年慶促銷拍賣會', '圖書館安靜自修室'], answer: 0 },
             { question: '在傳統客家八音中，哪一個學校設有著名的「八音社團」並曾錄製過《八音迎新春》節目？', options: ['大夥房國中', '新北國中', '美濃國中', '佳冬國中'], answer: 2 },
             { question: '客家八音中極具特色的「椰胡（殼仔絃）」，其琴筒為什麼會用椰子殼來製作？', options: ['因為椰子殼硬度極高，敲打起來最響亮', '因為演奏完可以直接把琴筒打開喝椰子汁', '因為南部椰子取材方便，且椰殼共鳴能產生溫潤、圓滑帶有鼻音的獨特音色', '為了配合夏威夷風情，讓舞台效果更好看'], answer: 2 },
-            { question: '下列哪一個場合，較少會看到或聽到客家八音的現場演奏？', options: ['跨年倒數晚會', '義民爺祭典', '傳統婚禮迎娶', '神明聖誕廟會'], answer: 0 },
+            { question: '下列哪一個場合，最少會看到或聽到客家八音的現場演奏？', options: ['跨年倒數晚會', '義民爺祭典', '傳統婚禮迎娶', '神明聖誕廟會'], answer: 0 },
             { question: '【是非題】客家八音中，以嗩吶與打擊樂為主、聲音宏亮熱鬧、常用於廟會出陣的演奏形式稱為「絃索樂」。', options: ['是 (Ｏ)', '否 (Ｘ)'], answer: 1 }
         ];
 
@@ -1481,25 +1481,27 @@
                         <p class="text-xs text-stone-500 font-medium">請選擇您想挑戰的遊戲項目：</p>
                     </div>
                     <div class="flex flex-col gap-4">
-                        <button onclick="switchGameView('puzzle')" class="w-full text-left bg-white p-5 rounded-2xl border border-stone-200 shadow-sm flex items-center gap-4 hover:border-blue-400 hover:bg-blue-50 transition-all group active:scale-[0.98]">
+                        <a href="https://kiddyhakka.github.io/M11475002/eight_fin.html" target="_blank" rel="noopener noreferrer" class="w-full text-left bg-white p-5 rounded-2xl border border-stone-200 shadow-sm flex items-center gap-4 hover:border-blue-400 hover:bg-blue-50 transition-all group active:scale-[0.98]">
                             <div class="bg-blue-50 p-4 rounded-xl text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
                                 <i data-lucide="puzzle" style="width: 32px; height: 32px;"></i>
                             </div>
                             <div class="flex-1">
-                                <h4 class="font-bold text-base mb-1 text-stone-800">八音拼貼</h4>
-                                <p class="text-xs text-stone-500">自己創作八音樂曲，馬上聽</p>
+                                <h4 class="font-bold text-base mb-1 text-stone-800 flex items-center gap-1.5">
+                                    八音拼貼 <i data-lucide="external-link" style="width: 14px; height: 14px;" class="text-stone-400 group-hover:text-blue-500"></i>
+                                </h4>
+                                <p class="text-xs text-stone-500">12軌音樂合奏，上傳音效並拼貼節奏 (前往完整版)</p>
                             </div>
-                            <i data-lucide="chevron-left" class="text-stone-300 rotate-180" style="width: 20px; height: 20px;"></i>
-                        </button>
+                            <i data-lucide="chevron-left" class="text-stone-300 rotate-180 group-hover:text-blue-500 transition-colors" style="width: 20px; height: 20px;"></i>
+                        </a>
                         <button onclick="switchGameView('quiz')" class="w-full text-left bg-white p-5 rounded-2xl border border-stone-200 shadow-sm flex items-center gap-4 hover:border-amber-500 hover:bg-amber-50 transition-all group active:scale-[0.98]">
                             <div class="bg-amber-50 p-4 rounded-xl text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors">
                                 <i data-lucide="help-circle" style="width: 32px; height: 32px;"></i>
                             </div>
                             <div class="flex-1">
                                 <h4 class="font-bold text-base mb-1 text-stone-800">八音知識小測驗</h4>
-                                <p class="text-xs text-stone-500">試試看，八音達人就是你！</p>
+                                <p class="text-xs text-stone-500">測試你對客家八音與樂器聲音的了解！</p>
                             </div>
-                            <i data-lucide="chevron-left" class="text-stone-300 rotate-180" style="width: 20px; height: 20px;"></i>
+                            <i data-lucide="chevron-left" class="text-stone-300 rotate-180 group-hover:text-amber-500 transition-colors" style="width: 20px; height: 20px;"></i>
                         </button>
                     </div>
                 </div>
